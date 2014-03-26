@@ -14,10 +14,7 @@ public class MARbuilder {
 
     private static void createAndShowGUI() {
         //Create main frame
-        JFrame mainFrame = new JFrame("MARbuilder");
-        mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        mainFrame.add(new MarForm());
+        JFrame mainFrame = new MarForm("MARbuilder");
 
         //Display the window.
         mainFrame.pack();
