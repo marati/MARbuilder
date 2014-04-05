@@ -11,6 +11,7 @@ import javax.swing.filechooser.FileFilter;
 
 import com.marati.marbuilder.FoldersWatcher;
 import gen.ParseException;
+import gen.JTableGen;
 
 /**
  *
@@ -24,6 +25,7 @@ public class MarForm extends JFrame
     JLabel locationLabel;
     JFileChooser fileChooser;
     FoldersWatcher foldersWatcher;
+    JTableGen tablesGenner;
     
     private static final String LOCATION = "location";
     
@@ -48,19 +50,29 @@ public class MarForm extends JFrame
         captionLocationLabel = new JLabel("Рабочая директория: ");
         locationLabel = new JLabel("не задана");
         
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        //JTable  = new JTable();
+        JTabbedPane structureTables = new JTabbedPane(JTabbedPane.LEFT);
+        JPanel testTabbedPane = new JPanel();
+        structureTables.add(testTabbedPane, "Test");
+        JPanel testTabbedPaneTwo = new JPanel();
+        structureTables.add(testTabbedPaneTwo, "Test two");
+        
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        //mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
         Box labelsBox = new Box(BoxLayout.X_AXIS);
         labelsBox.add(captionLocationLabel);
         labelsBox.add(locationLabel);
         
-        mainPanel.add(BorderLayout.WEST, openFileButton);
-        mainPanel.add(BorderLayout.WEST, labelsBox);
+        mainPanel.add(BorderLayout.SOUTH, openFileButton);
+        mainPanel.add(BorderLayout.NORTH, labelsBox);
+        mainPanel.add(BorderLayout.WEST, structureTables);
         
         add(mainPanel, BorderLayout.CENTER);
         
         readSettings();
+        
+        tablesGenner = new JTableGen(this);
         
         foldersWatcher = new FoldersWatcher(locationLabel.getText());
         foldersWatcher.checkWorkingDir();
@@ -88,5 +100,7 @@ public class MarForm extends JFrame
             }
         }
     }
+    
+    //public void addTabInPane(String title)
 
 }

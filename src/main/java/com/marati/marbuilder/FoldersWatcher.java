@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import gen.ParseException;
 import gen.XsdGen;
@@ -19,11 +20,13 @@ public class FoldersWatcher {
     
     private String workingPath;
     private final XsdGen xsdGen;
+    private final JTableGen tablesGen;
     //private static final String XSD_PATH = ""
     
-    public FoldersWatcher(String absoluteWorkingPath) {
+    public FoldersWatcher(String absoluteWorkingPath, JTableGen tablesGenner) {
         workingPath = absoluteWorkingPath;
         xsdGen = new XsdGen();
+        tablesGen = tablesGenner;
     }
     
     private String[] getWorkingFiles(String dirName) {
@@ -42,6 +45,8 @@ public class FoldersWatcher {
     
     //Вызывается при запуске программы, для проверки на созданные xsd
     private void checkCurrentExtDir(String[] dirsName) throws ParseException, IOException {
+        Map<String, List<String>> dirsAndTheirFiles = new HashMap<String, List<String>>();
+        
         for (String dir : dirsName) {
             String currentExtDir = new String(
                     workingPath + File.separator + dir
@@ -64,6 +69,8 @@ public class FoldersWatcher {
                 int dotPos = fileName.lastIndexOf(".");
                 filesNameWithoutExt.add( fileName.substring(0, dotPos) );
             }
+            
+            dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
             
             //Проверить, существует ли xsd; если нет - создать
             for (String fileName : filesNameWithoutExt) {
