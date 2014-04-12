@@ -19,7 +19,7 @@ public final class XsdGen {
     private static final String XSD_NS_URI = "http://www.w3.org/2001/XMLSchema";
     private final String XSD_PREFIX;
 
-    private Document doc = null; // populated after the parse method is called!
+    private Document doc = null;
 
     public XsdGen(final String prefix) {
         XSD_PREFIX = prefix;

@@ -11,6 +11,7 @@ import java.util.HashMap;
 
 import gen.ParseException;
 import gen.XsdGen;
+import gen.JTableGen;
 
 /**
  *
@@ -45,7 +46,7 @@ public class FoldersWatcher {
     
     //Вызывается при запуске программы, для проверки на созданные xsd
     private void checkCurrentExtDir(String[] dirsName) throws ParseException, IOException {
-        Map<String, List<String>> dirsAndTheirFiles = new HashMap<String, List<String>>();
+        HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
         
         for (String dir : dirsName) {
             String currentExtDir = new String(
@@ -86,6 +87,8 @@ public class FoldersWatcher {
                     System.out.println(currentFile.toString());
                     xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                 }
+                
+                tablesGen.addTablesInPane(dirsAndTheirFiles);
             }
         }
         
