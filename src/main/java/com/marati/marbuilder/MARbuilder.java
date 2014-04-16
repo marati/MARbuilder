@@ -9,6 +9,7 @@ import gen.ParseException;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import nu.xom.ParsingException;
 
 /**
  *
@@ -16,7 +17,7 @@ import java.util.logging.Logger;
  */
 public class MARbuilder {
 
-    private static void createAndShowGUI() throws ParseException, IOException {
+    private static void createAndShowGUI() throws ParseException, IOException, ParsingException {
         //Create main frame
         JFrame mainFrame = new MarForm("MARbuilder");
 
@@ -36,6 +37,8 @@ public class MARbuilder {
                 } catch (ParseException ex) {
                     Logger.getLogger(MARbuilder.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {
+                    Logger.getLogger(MARbuilder.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (ParsingException ex) {
                     Logger.getLogger(MARbuilder.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }

@@ -1,36 +1,40 @@
 package com.marati.marbuilder;
 
 import java.io.*;
+
+//utils
 import java.util.prefs.Preferences;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
+
+import nu.xom.ParsingException;
+
+//gui
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.event.WindowAdapter;
-import javax.swing.*;
-import javax.swing.JFileChooser.*;
-//mport javax.swing.table.TableColumn;
-import javax.swing.table.*
-import javax.swing.filechooser.FileFilter;
-import javax.swing.TransferHandler;
-import javax.swing.table.DefaultTableModel;
+import java.awt.datatransfer.*;
 
+import javax.swing.*;
+import javax.swing.table.*;
+//import static javax.swing.TransferHandler.COPY_OR_MOVE;
+//import static javax.swing.TransferHandler.MOVE;
+
+//my
 import com.marati.marbuilder.FoldersWatcher;
 import gen.ParseException;
 import gen.JTableGen;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import static javax.swing.TransferHandler.COPY_OR_MOVE;
-import static javax.swing.TransferHandler.MOVE;
 
 
 /**
  *
  * @author marat
  */
+
+class MARDefaultTableModel extends DefaultTableModel {
+    public Vector getColumnIdentifiers() {
+        return columnIdentifiers;
+    }
+}
 
 public class MarForm extends JFrame
                         implements ActionListener {
@@ -39,16 +43,17 @@ public class MarForm extends JFrame
     JLabel locationLabel;
     JTabbedPane structureTables;
     JFileChooser fileChooser;
+    final JTable summaryTable;
+    JMenuItem deleteColumnItem;
     FoldersWatcher foldersWatcher;
     JTableGen tablesGenner;
     
     private static final String LOCATION = "location";
     
-    public MarForm(String title) throws ParseException, IOException {
+    public MarForm(String title) throws ParseException, IOException, ParsingException {
         super(title);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
-        //rename t myframeClass
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -67,28 +72,49 @@ public class MarForm extends JFrame
         
         structureTables = new JTabbedPane(JTabbedPane.LEFT);
         
-        DefaultTableModel model = new DefaultTableModel();
+        DefaultTableModel model = new MARDefaultTableModel();
+        model.addColumn("Перенесите сюда колонки из левой части");
+        model.addRow(new String[]{"Этот текст пропадёт, если вы что-то перенесёте сюда"});
         
-        model.addColumn("Column 0");
-        model.addColumn("Column 1");
-        model.addColumn("Column 2");
-        model.addColumn("Column 3");
+        summaryTable = new JTable(model);
+
+        final JPopupMenu popup = new JPopupMenu();
+        deleteColumnItem = new JMenuItem("Удалить колонку");
+        deleteColumnItem.addActionListener(this);
+        popup.add(deleteColumnItem);
         
-        model.addRow(new String[]{"Table 00", "Table 01",
-                                  "Table 02", "Table 03"});
-        model.addRow(new String[]{"Table 10", "Table 11",
-                                  "Table 12", "Table 13"});
-        model.addRow(new String[]{"Table 20", "Table 21",
-                                  "Table 22", "Table 23"});
-        model.addRow(new String[]{"Table 30", "Table 31",
-                                  "Table 32", "Table 33"});
+        summaryTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent me) {
+                if (SwingUtilities.isRightMouseButton(me)) {
+                    Point currentPoint = me.getPoint();
+                    int colNumber = summaryTable.columnAtPoint(currentPoint);
+                    summaryTable.setColumnSelectionInterval(colNumber, colNumber);
+                }
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent me) {
+                maybeShowPopup(me);
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent me) {
+                maybeShowPopup(me);
+            }
+            
+            private void maybeShowPopup(MouseEvent me) {
+                if (me.isPopupTrigger()) {
+                    popup.show(me.getComponent(),
+                               me.getX(), me.getY());
+                }
+            }
+            
+        });
         
-        JTable summaryTable = new JTable(model);
-        summaryTable.setName("Сводная таблица");
         
-        //JTableHeader header = new JTableHeader();
-        //header.set
-        //summaryTable.setTableHeader(null);
+        JTableHeader header = summaryTable.getTableHeader();
+        header.setDefaultRenderer(new HeaderRenderer());
         
         JScrollPane summaryTablePane = new JScrollPane(summaryTable);
         
@@ -137,6 +163,10 @@ public class MarForm extends JFrame
                 File selectedFile = fileChooser.getSelectedFile();
                 locationLabel.setText(selectedFile.getPath());
             }
+        } else if (e.getSource() == deleteColumnItem) {            
+            int selectionColumn = summaryTable.getSelectedColumn();
+            System.out.println("delete menu click" + selectionColumn);
+            //summaryTable.getModel()
         }
     }
     
@@ -169,6 +199,25 @@ public class MarForm extends JFrame
         }
     }
 
+}
+
+class HeaderRenderer extends DefaultTableCellRenderer {
+    
+	// возвращает компонент для прорисовки
+	public Component getTableCellRendererComponent(
+		JTable table, Object value, boolean isSelected,
+			boolean hasFocus, int row, int column) 
+	{
+		JLabel label =
+			(JLabel) super.getTableCellRendererComponent(
+			 	table, value, isSelected, hasFocus,
+					row, column);
+		label.setBackground(Color.lightGray);
+		label.setBorder(BorderFactory.createLineBorder(java.awt.Color.gray));
+		label.setFont(new java.awt.Font("Dialog", java.awt.Font.BOLD, 15));
+		label.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+		return label;
+	}
 }
 
 class ListTransferHandler extends TransferHandler {
@@ -204,7 +253,7 @@ class ListTransferHandler extends TransferHandler {
         if (remove && indices != null) {
             JList source = (JList)c;
             DefaultListModel model  = (DefaultListModel)source.getModel();
-
+//source.set
             for (int i = indices.length - 1; i >= 0; i--) {
                 model.remove(indices[i]);
             }
@@ -219,16 +268,60 @@ class ListTransferHandler extends TransferHandler {
 
 class TableTransferHandler extends TransferHandler {
     
+    //mini-hack with description column
+    private boolean descriptionEnabled;
+    
+    public TableTransferHandler() {
+        descriptionEnabled = true;
+    }
+    
+    public void removeColumnAndData(JTable table, int vColIndex) {
+        MARDefaultTableModel model = (MARDefaultTableModel)table.getModel();
+        TableColumn col = table.getColumnModel().getColumn(vColIndex);
+        int columnModelIndex = col.getModelIndex();
+        Vector data = model.getDataVector();
+        Vector colIds = model.getColumnIdentifiers();
+
+        // Remove the column from the table
+        table.removeColumn(col);
+
+        // Remove the column header from the table model
+        colIds.removeElementAt(columnModelIndex);
+
+        // Remove the column data
+        for (int r=0; r<data.size(); r++) {
+            Vector row = (Vector)data.get(r);
+            row.removeElementAt(columnModelIndex);
+        }
+        model.setDataVector(data, colIds);
+
+        Enumeration enums = table.getColumnModel().getColumns();
+        for (; enums.hasMoreElements(); ) {
+            TableColumn c = (TableColumn)enums.nextElement();
+            if (c.getModelIndex() >= columnModelIndex) {
+                c.setModelIndex(c.getModelIndex()-1);
+            }
+        }
+        model.fireTableStructureChanged();
+    }
+    
     protected void importString(JComponent c, String str) {
         JTable target = (JTable)c;
-        DefaultTableModel model = (DefaultTableModel)target.getModel();
-        int index = target.getSelectedRow();
+        
+        TableModel tableModel= target.getModel();
+        DefaultTableModel model = (DefaultTableModel)tableModel;
 
         int colCount = target.getColumnCount();
         String[] values = str.split("\n");
         
         for (int i = 0; i < values.length && i < colCount; i++) {
             model.addColumn(values[i]);
+        }
+        
+        if (descriptionEnabled) {
+            //remove description column (index = 0)
+            removeColumnAndData(target, 0);
+            descriptionEnabled = false;
         }
     }
     

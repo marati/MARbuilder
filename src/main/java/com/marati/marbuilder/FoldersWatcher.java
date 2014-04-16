@@ -12,6 +12,7 @@ import java.util.HashMap;
 import gen.ParseException;
 import gen.XsdGen;
 import gen.JTableGen;
+import nu.xom.ParsingException;
 
 /**
  *
@@ -45,7 +46,7 @@ public class FoldersWatcher {
     }
     
     //Вызывается при запуске программы, для проверки на созданные xsd
-    private void checkCurrentExtDir(String[] dirsName) throws ParseException, IOException {
+    private void checkCurrentExtDir(String[] dirsName) throws ParseException, IOException, ParsingException {
         HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
         
         for (String dir : dirsName) {
@@ -95,7 +96,7 @@ public class FoldersWatcher {
         
     }
     
-    public void checkWorkingDir() throws ParseException, IOException {
+    public void checkWorkingDir() throws ParseException, IOException, ParsingException {
         if (workingPath.isEmpty())
             return;
         
