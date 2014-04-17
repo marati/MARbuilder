@@ -36,6 +36,92 @@ class MARDefaultTableModel extends DefaultTableModel {
     }
 }
 
+class SummaryTable extends JTable {
+    public SummaryTable() {
+        DefaultTableModel model = new MARDefaultTableModel();
+        model.addColumn("Перенесите сюда колонки из левой части");
+        model.addRow(new String[]{"Этот текст пропадёт, если вы что-то перенесёте сюда"});
+        setModel(model);
+        
+        getTableHeader().setDefaultRenderer(new HeaderRenderer());
+        
+        setDragEnabled(true);
+        setTransferHandler(new TableTransferHandler());
+    }
+    
+    //one parameter == one item in menu
+    public void addContextMenu(JMenuItem menuItem) {
+        final JPopupMenu popup = new JPopupMenu();
+        popup.add(menuItem);
+        
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent me) {
+
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent me) {
+                if (SwingUtilities.isRightMouseButton(me)) {
+                    Point currentPoint = me.getPoint();
+                    
+                    int colNumber = columnAtPoint(currentPoint);
+                    int rowNumber = rowAtPoint(currentPoint);
+                    
+                    setColumnSelectionInterval(colNumber, colNumber);
+                    setRowSelectionInterval(rowNumber, rowNumber);
+                }
+                
+                maybeShowPopup(me);
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent me) {
+                maybeShowPopup(me);
+            }
+            
+            private void maybeShowPopup(MouseEvent me) {
+                if (me.isPopupTrigger()) {
+                    popup.show(me.getComponent(),
+                               me.getX(), me.getY());
+                }
+            }
+            
+        });
+    }
+    
+    public void removeColumnAndData(int colIndex) {
+        MARDefaultTableModel model = (MARDefaultTableModel)getModel();
+        TableColumn col = getColumnModel().getColumn(colIndex);
+        int columnModelIndex = col.getModelIndex();
+        Vector data = model.getDataVector();
+        Vector colIds = model.getColumnIdentifiers();
+
+        // Remove the column from the table
+        removeColumn(col);
+
+        // Remove the column header from the table model
+        colIds.removeElementAt(columnModelIndex);
+
+        // Remove the column data
+        for (int r=0; r<data.size(); r++) {
+            Vector row = (Vector)data.get(r);
+            row.removeElementAt(columnModelIndex);
+        }
+        model.setDataVector(data, colIds);
+
+        Enumeration enums = getColumnModel().getColumns();
+        for (; enums.hasMoreElements(); ) {
+            TableColumn c = (TableColumn)enums.nextElement();
+            if (c.getModelIndex() >= columnModelIndex) {
+                c.setModelIndex(c.getModelIndex()-1);
+            }
+        }
+        model.fireTableStructureChanged();
+    }
+    
+}
+
 public class MarForm extends JFrame
                         implements ActionListener {
     JButton openFileButton;
@@ -43,7 +129,7 @@ public class MarForm extends JFrame
     JLabel locationLabel;
     JTabbedPane structureTables;
     JFileChooser fileChooser;
-    final JTable summaryTable;
+    final SummaryTable summaryTable;
     JMenuItem deleteColumnItem;
     FoldersWatcher foldersWatcher;
     JTableGen tablesGenner;
@@ -72,54 +158,14 @@ public class MarForm extends JFrame
         
         structureTables = new JTabbedPane(JTabbedPane.LEFT);
         
-        DefaultTableModel model = new MARDefaultTableModel();
-        model.addColumn("Перенесите сюда колонки из левой части");
-        model.addRow(new String[]{"Этот текст пропадёт, если вы что-то перенесёте сюда"});
-        
-        summaryTable = new JTable(model);
-
-        final JPopupMenu popup = new JPopupMenu();
         deleteColumnItem = new JMenuItem("Удалить колонку");
         deleteColumnItem.addActionListener(this);
-        popup.add(deleteColumnItem);
         
-        summaryTable.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent me) {
-                if (SwingUtilities.isRightMouseButton(me)) {
-                    Point currentPoint = me.getPoint();
-                    int colNumber = summaryTable.columnAtPoint(currentPoint);
-                    summaryTable.setColumnSelectionInterval(colNumber, colNumber);
-                }
-            }
-            
-            @Override
-            public void mousePressed(MouseEvent me) {
-                maybeShowPopup(me);
-            }
-            
-            @Override
-            public void mouseReleased(MouseEvent me) {
-                maybeShowPopup(me);
-            }
-            
-            private void maybeShowPopup(MouseEvent me) {
-                if (me.isPopupTrigger()) {
-                    popup.show(me.getComponent(),
-                               me.getX(), me.getY());
-                }
-            }
-            
-        });
-        
-        
-        JTableHeader header = summaryTable.getTableHeader();
-        header.setDefaultRenderer(new HeaderRenderer());
-        
+        //Создать класс SummaryTable с методом удаления колонок, для того, чтобы удалять с помощью меню
+        summaryTable = new SummaryTable();
+        summaryTable.addContextMenu(deleteColumnItem);
+
         JScrollPane summaryTablePane = new JScrollPane(summaryTable);
-        
-        summaryTable.setDragEnabled(true);
-        summaryTable.setTransferHandler(new TableTransferHandler());
         
         JPanel mainPanel = new JPanel(new BorderLayout());
         //mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -165,8 +211,8 @@ public class MarForm extends JFrame
             }
         } else if (e.getSource() == deleteColumnItem) {            
             int selectionColumn = summaryTable.getSelectedColumn();
-            System.out.println("delete menu click" + selectionColumn);
-            //summaryTable.getModel()
+            //System.out.println("delete menu click" + selectionColumn);
+            summaryTable.removeColumnAndData(selectionColumn);
         }
     }
     
@@ -275,38 +321,8 @@ class TableTransferHandler extends TransferHandler {
         descriptionEnabled = true;
     }
     
-    public void removeColumnAndData(JTable table, int vColIndex) {
-        MARDefaultTableModel model = (MARDefaultTableModel)table.getModel();
-        TableColumn col = table.getColumnModel().getColumn(vColIndex);
-        int columnModelIndex = col.getModelIndex();
-        Vector data = model.getDataVector();
-        Vector colIds = model.getColumnIdentifiers();
-
-        // Remove the column from the table
-        table.removeColumn(col);
-
-        // Remove the column header from the table model
-        colIds.removeElementAt(columnModelIndex);
-
-        // Remove the column data
-        for (int r=0; r<data.size(); r++) {
-            Vector row = (Vector)data.get(r);
-            row.removeElementAt(columnModelIndex);
-        }
-        model.setDataVector(data, colIds);
-
-        Enumeration enums = table.getColumnModel().getColumns();
-        for (; enums.hasMoreElements(); ) {
-            TableColumn c = (TableColumn)enums.nextElement();
-            if (c.getModelIndex() >= columnModelIndex) {
-                c.setModelIndex(c.getModelIndex()-1);
-            }
-        }
-        model.fireTableStructureChanged();
-    }
-    
     protected void importString(JComponent c, String str) {
-        JTable target = (JTable)c;
+        SummaryTable target = (SummaryTable)c;
         
         TableModel tableModel= target.getModel();
         DefaultTableModel model = (DefaultTableModel)tableModel;
@@ -320,7 +336,7 @@ class TableTransferHandler extends TransferHandler {
         
         if (descriptionEnabled) {
             //remove description column (index = 0)
-            removeColumnAndData(target, 0);
+            target.removeColumnAndData(0);
             descriptionEnabled = false;
         }
     }
