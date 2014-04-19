@@ -20,13 +20,12 @@ import nu.xom.ParsingException;
  */
 public class FoldersWatcher {
     
-    private String workingPath;
+    private String workingPath = "";
     private final XsdGen xsdGen;
     private final JTableGen tablesGen;
     //private static final String XSD_PATH = ""
     
-    public FoldersWatcher(String absoluteWorkingPath, JTableGen tablesGenner) {
-        workingPath = absoluteWorkingPath;
+    public FoldersWatcher(JTableGen tablesGenner) {
         xsdGen = new XsdGen();
         tablesGen = tablesGenner;
     }
@@ -89,16 +88,18 @@ public class FoldersWatcher {
                     xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                 }
                 
-                tablesGen.addTablesInPane(dirsAndTheirFiles);
+                tablesGen.convertToXsd(dirsAndTheirFiles);
             }
         }
         
         
     }
     
-    public void checkWorkingDir() throws ParseException, IOException, ParsingException {
-        if (workingPath.isEmpty())
+    public void checkWorkingDir(String workingDir) throws ParseException, IOException, ParsingException {
+        if (workingPath.equals(workingDir))
             return;
+            
+        workingPath = workingDir;
         
         //makes new folders
         String[] dirs = {

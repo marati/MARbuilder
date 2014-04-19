@@ -21,8 +21,11 @@ import javax.swing.table.*;
 
 //my
 import com.marati.marbuilder.FoldersWatcher;
+import com.marati.marbuilder.MARmq;
 import gen.ParseException;
 import gen.JTableGen;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 /**
@@ -124,15 +127,17 @@ class SummaryTable extends JTable {
 
 public class MarForm extends JFrame
                         implements ActionListener {
-    JButton openFileButton;
-    JLabel captionLocationLabel;
+    private final JButton getClientsTables;
+    private final JButton openFileButton;
+    private final JLabel captionLocationLabel;
     JLabel locationLabel;
     JTabbedPane structureTables;
-    JFileChooser fileChooser;
-    final SummaryTable summaryTable;
-    JMenuItem deleteColumnItem;
-    FoldersWatcher foldersWatcher;
-    JTableGen tablesGenner;
+    private final JFileChooser fileChooser;
+    private final SummaryTable summaryTable;
+    private final JMenuItem deleteColumnItem;
+    private final FoldersWatcher foldersWatcher;
+    private final JTableGen tablesGenner;
+    private final MARmq messageQueue;
     
     private static final String LOCATION = "location";
     
@@ -150,8 +155,15 @@ public class MarForm extends JFrame
         fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         
-        openFileButton = new JButton("Выберите папку для Вашего проекта...");
+        openFileButton = new JButton("Выбрать папку проекта...");
         openFileButton.addActionListener(this);
+        
+        getClientsTables = new JButton("Получить таблицы от клиентов");
+        getClientsTables.addActionListener(this);
+        
+        JPanel buttonsPanel = new JPanel(new FlowLayout());
+        buttonsPanel.add(openFileButton);
+        buttonsPanel.add(getClientsTables);
         
         captionLocationLabel = new JLabel("Рабочая директория: ");
         locationLabel = new JLabel("не задана");
@@ -161,7 +173,6 @@ public class MarForm extends JFrame
         deleteColumnItem = new JMenuItem("Удалить колонку");
         deleteColumnItem.addActionListener(this);
         
-        //Создать класс SummaryTable с методом удаления колонок, для того, чтобы удалять с помощью меню
         summaryTable = new SummaryTable();
         summaryTable.addContextMenu(deleteColumnItem);
 
@@ -170,12 +181,12 @@ public class MarForm extends JFrame
         JPanel mainPanel = new JPanel(new BorderLayout());
         //mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
-        Box labelsBox = new Box(BoxLayout.X_AXIS);
-        labelsBox.add(captionLocationLabel);
-        labelsBox.add(locationLabel);
+        JPanel labelsPanel = new JPanel(new FlowLayout());
+        labelsPanel.add(captionLocationLabel);
+        labelsPanel.add(locationLabel);
         
-        mainPanel.add(BorderLayout.SOUTH, openFileButton);
-        mainPanel.add(BorderLayout.NORTH, labelsBox);
+        mainPanel.add(BorderLayout.NORTH, labelsPanel);
+        mainPanel.add(BorderLayout.SOUTH, buttonsPanel);
         mainPanel.add(BorderLayout.WEST, structureTables);
         mainPanel.add(BorderLayout.EAST, summaryTablePane);
         
@@ -183,10 +194,15 @@ public class MarForm extends JFrame
         
         readSettings();
         
+        String locationPath = locationLabel.getText();
+        
+        messageQueue = new MARmq(locationPath);
+        messageQueue.activateReceiver();
+        
         tablesGenner = new JTableGen(this);
         
-        foldersWatcher = new FoldersWatcher(locationLabel.getText(), tablesGenner);
-        foldersWatcher.checkWorkingDir();
+        foldersWatcher = new FoldersWatcher(tablesGenner);
+        foldersWatcher.checkWorkingDir(locationPath);
     }
     
     private void readSettings() {
@@ -207,8 +223,22 @@ public class MarForm extends JFrame
             
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = fileChooser.getSelectedFile();
-                locationLabel.setText(selectedFile.getPath());
+                String locationPath = selectedFile.getPath();
+                
+                locationLabel.setText(locationPath);
+                messageQueue.updateProjectPath(locationPath);
+                try {
+                    foldersWatcher.checkWorkingDir(locationPath);
+                } catch (ParseException ex) {
+                    Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IOException ex) {
+                    Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (ParsingException ex) {
+                    Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
+        } else if (e.getSource() == getClientsTables) {
+            //messageQueue.clickReceivedButton();
         } else if (e.getSource() == deleteColumnItem) {            
             int selectionColumn = summaryTable.getSelectedColumn();
             //System.out.println("delete menu click" + selectionColumn);
@@ -243,6 +273,11 @@ public class MarForm extends JFrame
             
             structureTables.add(tabbedPane, tableName);
         }
+    }
+    
+    public void sendFileToTopic(String filePath) throws IOException {
+        System.out.println("send file: " + filePath);
+        messageQueue.sendFile(filePath);
     }
 
 }
@@ -299,7 +334,7 @@ class ListTransferHandler extends TransferHandler {
         if (remove && indices != null) {
             JList source = (JList)c;
             DefaultListModel model  = (DefaultListModel)source.getModel();
-//source.set
+            
             for (int i = indices.length - 1; i >= 0; i--) {
                 model.remove(indices[i]);
             }
@@ -315,11 +350,7 @@ class ListTransferHandler extends TransferHandler {
 class TableTransferHandler extends TransferHandler {
     
     //mini-hack with description column
-    private boolean descriptionEnabled;
-    
-    public TableTransferHandler() {
-        descriptionEnabled = true;
-    }
+    private boolean descriptionEnabled = true;
     
     protected void importString(JComponent c, String str) {
         SummaryTable target = (SummaryTable)c;
@@ -327,18 +358,19 @@ class TableTransferHandler extends TransferHandler {
         TableModel tableModel= target.getModel();
         DefaultTableModel model = (DefaultTableModel)tableModel;
 
-        int colCount = target.getColumnCount();
         String[] values = str.split("\n");
         
-        for (int i = 0; i < values.length && i < colCount; i++) {
+        for (int i = 0; i < values.length; i++) {
             model.addColumn(values[i]);
+            
+            if (descriptionEnabled) {
+                //remove description column (index = 0)
+                target.removeColumnAndData(0);
+                descriptionEnabled = false;
+            }
         }
         
-        if (descriptionEnabled) {
-            //remove description column (index = 0)
-            target.removeColumnAndData(0);
-            descriptionEnabled = false;
-        }
+
     }
     
     public int getSourceActions(JComponent c) {

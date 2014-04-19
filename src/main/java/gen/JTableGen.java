@@ -3,6 +3,7 @@ package gen;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.*;
 import java.io.File;
 import java.io.IOException;
 import nu.xom.Attribute;
@@ -29,7 +30,6 @@ public class JTableGen {
     
     private void recurseXsd(Element parent) {
         Elements childs = parent.getChildElements();
-        System.out.println("childs: " + childs.size());
         
         if (childs.size() > 0) {
             for (int e=0; e<childs.size(); e++) {
@@ -55,9 +55,7 @@ public class JTableGen {
                 if (child.getChildCount() > 0)
                     recurseXsd(child);
             }
-        }
-        System.out.println("exit in func");
-        
+        } 
     }
     
     private void parseXsd(File xsdFile) throws ParsingException, IOException {
@@ -72,7 +70,7 @@ public class JTableGen {
         tables.put(tableName, columns);
     }
     
-    public void addTablesInPane(HashMap<String, ArrayList<String>> extDirsWithFiles) throws ParsingException, IOException {
+    public void convertToXsd(HashMap<String, ArrayList<String>> extDirsWithFiles) throws ParsingException, IOException {
         for (Map.Entry<String, ArrayList<String>> entryExtDirs: extDirsWithFiles.entrySet()) {
             
             //get Dir
@@ -82,10 +80,12 @@ public class JTableGen {
             ArrayList<String> filesNameWithoutExt = entryExtDirs.getValue();
             for (String fileName : filesNameWithoutExt) {
                 File xsdFile = new File(curentDir + File.separator + fileName + ".xsd");
-                System.out.println("parse " + xsdFile.getName());
                 parseXsd(xsdFile);
-                //вытащить файл и отпарсить
-                //после этого вызвать метод, в который передать имя вкладки и список столбцов String[]
+                
+                String logMessage = new String("Convert: " + fileName + ".xml to" + xsdFile.getName());
+                Logger.getLogger(JTableGen.class.getName()).log(Level.INFO, null, logMessage);
+                
+                marForm.sendFileToTopic(xsdFile.getAbsolutePath());
             }
         }
         
