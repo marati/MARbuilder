@@ -21,11 +21,13 @@ import javax.swing.table.*;
 
 //my
 import com.marati.marbuilder.FoldersWatcher;
-import com.marati.marbuilder.MARmq;
 import gen.ParseException;
 import gen.JTableGen;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
+
+import java.awt.geom.Dimension2D;
 
 
 /**
@@ -134,12 +136,15 @@ public class MarForm extends JFrame
     JTabbedPane structureTables;
     private final JFileChooser fileChooser;
     private final SummaryTable summaryTable;
+    private JPanel mainPanel;
+    private JScrollPane summaryTablePane;
     private final JMenuItem deleteColumnItem;
+    private final JMenuItem addRowItem;
     private final FoldersWatcher foldersWatcher;
     private final JTableGen tablesGenner;
-    private final MARmq messageQueue;
     
     private static final String LOCATION = "location";
+    private static final String MESSAGE_IDS = "message_ids";
     
     public MarForm(String title) throws ParseException, IOException, ParsingException {
         super(title);
@@ -168,18 +173,38 @@ public class MarForm extends JFrame
         captionLocationLabel = new JLabel("Рабочая директория: ");
         locationLabel = new JLabel("не задана");
         
+        JLabel structureLabel = new JLabel("Доступные схемы");
+        structureLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        structureLabel.setOpaque(true);
+        structureLabel.setBackground(Color.lightGray);
+        structureLabel.setBorder(BorderFactory.createLineBorder(java.awt.Color.gray));
+        structureLabel.setFont(new java.awt.Font("Dialog", java.awt.Font.BOLD, 15));
+        
         structureTables = new JTabbedPane(JTabbedPane.LEFT);
+        structureTables.setPreferredSize(new Dimension(200, 200));
+        
+        JPanel structureTablesPanel = new JPanel();
+        structureTablesPanel.setLayout(new BoxLayout(structureTablesPanel, BoxLayout.Y_AXIS));
+
+        structureTablesPanel.add(structureLabel);
+        structureTablesPanel.add(structureTables);
         
         deleteColumnItem = new JMenuItem("Удалить колонку");
         deleteColumnItem.addActionListener(this);
         
-        summaryTable = new SummaryTable();
-        summaryTable.addContextMenu(deleteColumnItem);
-
-        JScrollPane summaryTablePane = new JScrollPane(summaryTable);
+        addRowItem = new JMenuItem("Добавить строку");
+        addRowItem.addActionListener(this);
         
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        //mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        summaryTable = new SummaryTable();
+        //summaryTable.setPre
+        summaryTable.setAutoResizeMode(400);
+        summaryTable.addContextMenu(deleteColumnItem);
+        summaryTable.addContextMenu(addRowItem);
+
+        summaryTablePane = new JScrollPane(summaryTable);
+        //summaryTablePane.setPreferredSize(new Dimension(300, 300));
+        
+        mainPanel = new JPanel(new BorderLayout());
 
         JPanel labelsPanel = new JPanel(new FlowLayout());
         labelsPanel.add(captionLocationLabel);
@@ -187,33 +212,50 @@ public class MarForm extends JFrame
         
         mainPanel.add(BorderLayout.NORTH, labelsPanel);
         mainPanel.add(BorderLayout.SOUTH, buttonsPanel);
-        mainPanel.add(BorderLayout.WEST, structureTables);
+        mainPanel.add(BorderLayout.WEST, structureTablesPanel);
         mainPanel.add(BorderLayout.EAST, summaryTablePane);
         
         add(mainPanel, BorderLayout.CENTER);
+        
+        structureTables.setSize(100, 500);
+        structureTables.setVisible(false);
         
         readSettings();
         
         String locationPath = locationLabel.getText();
         
-        messageQueue = new MARmq(locationPath);
-        messageQueue.activateReceiver();
-        
         tablesGenner = new JTableGen(this);
         
         foldersWatcher = new FoldersWatcher(tablesGenner);
         foldersWatcher.checkWorkingDir(locationPath);
+        
+        UIManager.getDefaults (). put ("TabbedPane.lightHighlight" ,  Color.BLACK );
+        UIManager.getDefaults (). put ("TabbedPane.selectHighlight",  Color.BLACK );
+        UIManager.getDefaults().put("TabbedPane.contentBorderInsets", new Insets(0,0,0,0));
     }
     
     private void readSettings() {
-        Preferences prefs = Preferences.userNodeForPackage(getClass());
-        String location = prefs.get(LOCATION, "");
-        locationLabel.setText(location);
+        try {
+            Preferences prefs = Preferences.userNodeForPackage(getClass());
+            
+            //if (prefs.nodeExists(LOCATION)) {
+                String location = prefs.get(LOCATION, "");
+                locationLabel.setText(location);
+            //}
+            
+            if (prefs.nodeExists(MESSAGE_IDS)) {
+                String messageIds = prefs.get(MESSAGE_IDS, "");
+                foldersWatcher.setReceivedMessageIds(messageIds);
+            }
+        } catch (BackingStoreException ex) {
+            Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     private void saveSettings() {
         Preferences prefs = Preferences.userNodeForPackage(getClass());
         prefs.put(LOCATION, locationLabel.getText());
+        //prefs.put(MESSAGE_IDS, foldersWatcher.getReceivedMessageIdsByString());
     }
     
     @Override
@@ -226,7 +268,6 @@ public class MarForm extends JFrame
                 String locationPath = selectedFile.getPath();
                 
                 locationLabel.setText(locationPath);
-                messageQueue.updateProjectPath(locationPath);
                 try {
                     foldersWatcher.checkWorkingDir(locationPath);
                 } catch (ParseException ex) {
@@ -243,10 +284,16 @@ public class MarForm extends JFrame
             int selectionColumn = summaryTable.getSelectedColumn();
             //System.out.println("delete menu click" + selectionColumn);
             summaryTable.removeColumnAndData(selectionColumn);
+            
+        } else if (e.getSource() == addRowItem) {
+            MARDefaultTableModel model = (MARDefaultTableModel)summaryTable.getModel();
+            model.addRow(new Object[]{"", ""});
         }
     }
     
     public void addTabsInPane(HashMap<String, ArrayList<String>> tables) {
+        if (!structureTables.isVisible())
+            structureTables.setVisible(true);
         
         for (Map.Entry<String, ArrayList<String>> tableInfo: tables.entrySet()) {
             //get Table Name
@@ -272,14 +319,23 @@ public class MarForm extends JFrame
             columnsList.setTransferHandler(new ListTransferHandler());
             
             structureTables.add(tabbedPane, tableName);
+            structureTables.repaint();
+            structureTables.validate();
+            
+            
+            summaryTablePane.repaint();
+            summaryTablePane.revalidate();
+            
+            summaryTable.repaint();
+            summaryTable.revalidate();
+            
+            mainPanel.repaint();
+            mainPanel.revalidate();
+            
+            
         }
     }
     
-    public void sendFileToTopic(String filePath) throws IOException {
-        System.out.println("send file: " + filePath);
-        messageQueue.sendFile(filePath);
-    }
-
 }
 
 class HeaderRenderer extends DefaultTableCellRenderer {

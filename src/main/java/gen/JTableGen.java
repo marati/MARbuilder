@@ -70,7 +70,9 @@ public class JTableGen {
         tables.put(tableName, columns);
     }
     
-    public void convertToXsd(HashMap<String, ArrayList<String>> extDirsWithFiles) throws ParsingException, IOException {
+    public void createTablesFromXsd(HashMap<String, ArrayList<String>> extDirsWithFiles) throws ParsingException, IOException {
+        tables.clear();
+        
         for (Map.Entry<String, ArrayList<String>> entryExtDirs: extDirsWithFiles.entrySet()) {
             
             //get Dir
@@ -84,8 +86,6 @@ public class JTableGen {
                 
                 String logMessage = new String("Convert: " + fileName + ".xml to" + xsdFile.getName());
                 Logger.getLogger(JTableGen.class.getName()).log(Level.INFO, null, logMessage);
-                
-                marForm.sendFileToTopic(xsdFile.getAbsolutePath());
             }
         }
         

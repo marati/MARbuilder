@@ -14,6 +14,7 @@ import gen.XsdGen;
 import gen.JTableGen;
 import nu.xom.ParsingException;
 
+import com.marati.marbuilder.MARmq;
 /**
  *
  * @author marat
@@ -23,11 +24,13 @@ public class FoldersWatcher {
     private String workingPath = "";
     private final XsdGen xsdGen;
     private final JTableGen tablesGen;
-    //private static final String XSD_PATH = ""
+    private final MARmq messageQueue;
     
     public FoldersWatcher(JTableGen tablesGenner) {
         xsdGen = new XsdGen();
         tablesGen = tablesGenner;
+        
+        messageQueue = new MARmq(tablesGen);
     }
     
     private String[] getWorkingFiles(String dirName) {
@@ -82,17 +85,16 @@ public class FoldersWatcher {
                 System.out.println("working file: " + currentFile.toString());
                 
                 if (currentFile.length() == 0) {
-                    System.out.println("file not exist " + currentFile.toString());
                     OutputStream os = new FileOutputStream(currentFile);
-                    System.out.println(currentFile.toString());
                     xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
+                    
+                    messageQueue.sendFile(currentFile.getAbsolutePath());
                 }
                 
-                tablesGen.convertToXsd(dirsAndTheirFiles);
             }
         }
         
-        
+        tablesGen.createTablesFromXsd(dirsAndTheirFiles);
     }
     
     public void checkWorkingDir(String workingDir) throws ParseException, IOException, ParsingException {
@@ -100,6 +102,9 @@ public class FoldersWatcher {
             return;
             
         workingPath = workingDir;
+        
+        messageQueue.updateProjectPath(workingPath);
+        messageQueue.activateReceiver();
         
         //makes new folders
         String[] dirs = {
@@ -115,5 +120,13 @@ public class FoldersWatcher {
         
         String[] extDirs = {"xml", "xlc"};
         checkCurrentExtDir(extDirs);
+    }
+    
+    public String getReceivedMessageIdsByString() {
+        return messageQueue.getReceiveIds();
+    }
+    
+    public void setReceivedMessageIds(String messageIds) {
+        messageQueue.setReceiveIds(messageIds);
     }
 }
