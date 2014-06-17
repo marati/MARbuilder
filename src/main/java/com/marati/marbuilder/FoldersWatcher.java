@@ -108,7 +108,7 @@ public class FoldersWatcher {
         
         //makes new folders
         String[] dirs = {
-            "xml/uploads/", "xml/xsd/", "xlc/uploads/", "xlc/xsd/"
+            "xml/uploads/", "xml/xsd/", "xlc/uploads/", "xlc/xsd/", "xsd"
         };
         
         for (int i = 0; i < dirs.length; ++i) {

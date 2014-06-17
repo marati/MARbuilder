@@ -56,7 +56,10 @@ public class MARmq {
             if (connection == null) {
                 connectionFactory = getConnectionFactory();
                 connection = connectionFactory.createConnection();
-                connection.setClientID("MARbuilder");
+                
+                int clientId = (int) (1 + Math.random() * 100);
+                String clientIdentificator = new String("ID: "+clientId+" PATH: ("+projectPath+")");
+                connection.setClientID("MARbuilder"+clientIdentificator);
                 connection.start();
                 
                 //сессия без транзакций
@@ -64,7 +67,7 @@ public class MARmq {
                 
                 ActiveMQTopic topic = (ActiveMQTopic)getDestinationTopic();
 
-                MessageConsumer consumer = session.createDurableSubscriber(topic, "subToMARTopic");
+                MessageConsumer consumer = session.createDurableSubscriber(topic, "subFromPath("+projectPath+")");
                 consumer.setMessageListener(new Listener());
             } else {
                 connection.start();
@@ -235,11 +238,20 @@ public class MARmq {
                 byte[] bytes = new byte[(int)bytesMessage.getBodyLength()];
                 bytesMessage.readBytes(bytes);
                 
-                //mini-hardcode
-                String xsdDir = new String(projectPath + File.separator + "xml" +
-                        File.separator + "xsd" + File.separator);
-                
                 String fileName = new String(msg.getStringProperty("filename"));
+                int dotPos = fileName.lastIndexOf(".");
+                
+                String xsdDir = null;
+                String extention = fileName.substring(dotPos);
+                if (extention.equals("xsd")) {
+                    xsdDir = new String(projectPath + File.separator + "xsd");
+                } else {
+                    Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, "fail parse file: " + extention);
+                    return;
+                }
+
+                
+
                 File receivedFile = new File(xsdDir + fileName);
 
                 FileOutputStream fos = new FileOutputStream(receivedFile);
@@ -254,7 +266,6 @@ public class MARmq {
                 HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
                 ArrayList<String> filesNameWithoutExt = new ArrayList<String>();
                 
-                int dotPos = fileName.lastIndexOf(".");
                 filesNameWithoutExt.add( fileName.substring(0, dotPos) );
                 
                 dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
