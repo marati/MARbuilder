@@ -146,7 +146,8 @@ public class MARmq {
             for (NetworkInterface netint : Collections.list(nets)) {
                 System.out.printf("Display name: %s\n", netint.getDisplayName());
                 
-                if (!netint.getDisplayName().contains("Wireless"))
+                String netintName = netint.getDisplayName();
+                if (!netintName.contains("Wireless") &&  !netintName.contains("lan"))
                     continue;
                 else
                     breakCycle = true;
@@ -157,7 +158,7 @@ public class MARmq {
                     String inetAddr = inetAddress.toString();
                     
                     if (ip.matcher(inetAddr).matches()) {
-                        ipv4 = inetAddr;
+                        ipv4 = inetAddr.substring(1, inetAddr.length());
                         break;
                     }
                     
