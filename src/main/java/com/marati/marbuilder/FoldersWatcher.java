@@ -129,4 +129,8 @@ public class FoldersWatcher {
     public void setReceivedMessageIds(String messageIds) {
         messageQueue.setReceiveIds(messageIds);
     }
+    
+    public void buildReport(String reportName/*, Vector columns*/) {
+        messageQueue.buildReport(reportName);
+    }
 }

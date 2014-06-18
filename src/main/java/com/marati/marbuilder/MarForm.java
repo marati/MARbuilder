@@ -39,6 +39,8 @@ class MARDefaultTableModel extends DefaultTableModel {
     public Vector getColumnIdentifiers() {
         return columnIdentifiers;
     }
+    
+    //в этом классе связать имя колонки и имя схемы (привязка не по name, а по id)
 }
 
 class SummaryTable extends JTable {
@@ -278,13 +280,19 @@ public class MarForm extends JFrame
                     Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
+            
         } else if (e.getSource() == getClientsTables) {
-            //messageQueue.clickReceivedButton();
+            String nameReportDialog = JOptionPane.showInputDialog(this, "Введите название сводного отчёта:");
+            foldersWatcher.buildReport(nameReportDialog);
+            
+            MARDefaultTableModel marModel = (MARDefaultTableModel)summaryTable.getModel();
+            System.out.println(marModel.getColumnIdentifiers().toString());
+            
+
         } else if (e.getSource() == deleteColumnItem) {            
             int selectionColumn = summaryTable.getSelectedColumn();
             //System.out.println("delete menu click" + selectionColumn);
             summaryTable.removeColumnAndData(selectionColumn);
-            
         } else if (e.getSource() == addRowItem) {
             MARDefaultTableModel model = (MARDefaultTableModel)summaryTable.getModel();
             model.addRow(new Object[]{"", ""});
@@ -312,7 +320,9 @@ public class MarForm extends JFrame
             }
 
             JList columnsList = new JList(listModel);
+            columnsList.setName(tableName);
             columnsList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            
             JScrollPane tabbedPane = new JScrollPane(columnsList);
             
             columnsList.setDragEnabled(true);
@@ -363,6 +373,7 @@ class ListTransferHandler extends TransferHandler {
     protected String exportString(JComponent c) {
         JList list = (JList)c;
         indices = list.getSelectedIndices();
+
         Object[] values = list.getSelectedValues();
         
         StringBuffer buff = new StringBuffer();
@@ -375,7 +386,7 @@ class ListTransferHandler extends TransferHandler {
             }
         }
         
-        return buff.toString();
+        return list.getName() + "|" + buff.toString();
     }
     
     protected Transferable createTransferable(JComponent c) {
@@ -414,10 +425,15 @@ class TableTransferHandler extends TransferHandler {
         TableModel tableModel= target.getModel();
         DefaultTableModel model = (DefaultTableModel)tableModel;
 
-        String[] values = str.split("\n");
+        String[] tableNameAndValues = str.split("|");
+        String tableName = tableNameAndValues[0];
+        String rawValues = tableNameAndValues[1];
+        
+        String[] values = rawValues.split("\n");
         
         for (int i = 0; i < values.length; i++) {
             model.addColumn(values[i]);
+            //после add, вызывает метод get last и вызываем ф-цию из MARDEFAULmodel, связывающей имя колонки и схему
             
             if (descriptionEnabled) {
                 //remove description column (index = 0)
@@ -425,7 +441,6 @@ class TableTransferHandler extends TransferHandler {
                 descriptionEnabled = false;
             }
         }
-        
 
     }
     

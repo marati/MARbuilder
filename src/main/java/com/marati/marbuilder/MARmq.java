@@ -10,6 +10,7 @@ import org.apache.log4j.Logger;
 import java.io.*;
 import java.util.*;
 import java.net.*;
+import java.sql.PreparedStatement;
 import java.math.BigInteger;
 
 //import java.security.DigestInputStream;
@@ -41,7 +42,7 @@ public class MARmq {
     private static Destination destination; 
     private static Logger logger = Logger.getLogger(MARmq.class);
     
-    private final static String topic = "MARtopic";
+    private final static String mainTopic = "MARtopic";
     private final JTableGen tablesGen;
     private static String projectPath = null;
     private static ArrayList<String> messageIds;
@@ -59,18 +60,38 @@ public class MARmq {
 
             String createQuery = 
                     "CREATE TABLE scheme_mapping (" +
-                    "id int primary key not null," +
+                    "id integer primary key autoincrement not null," +
                     "ip text not null," +
                     "scheme_name text not null," +
-                    "file_name text not null," +
-                    "columns text not null)";
+                    "file_name text not null)";
+                    //"columns text not null)";
             
             createStatement.executeUpdate(createQuery);
             createStatement.close();
         } catch (SQLException ex) {
             logger.info(ex);
-        }
-                        
+        }               
+    }
+    
+    public void saveMapping(String ip, String schemeName, String fileName) {
+        try {
+            String insertQuery = 
+                    "INSERT INTO scheme_mapping (ip, scheme_name, file_name)" +
+                    "VALUES (?, ?, ?)";
+            
+            PreparedStatement ps = sqliteCon.prepareStatement(insertQuery);
+            ps.setString(1, ip);
+            ps.setString(2, schemeName);
+            ps.setString(3, fileName);
+            ps.executeUpdate();
+            
+            String loggerInfo = String.format("insert into scheme_mapping [%s, %s, %s]",
+                                              ip, schemeName, fileName);
+            logger.info(loggerInfo);
+            ps.close();
+        } catch (SQLException ex) {
+            logger.info(ex);
+        }  
     }
     
     public void updateProjectPath(String path) {
@@ -108,9 +129,9 @@ public class MARmq {
         }
     }
     
-    private static Destination getDestinationTopic() {
+    private static Destination getDestinationTopic(String topicName) {
         try {
-            return session.createTopic(topic);
+            return session.createTopic(topicName);
         } catch (JMSException ex) {
             logger.error(ex);
             return null;
@@ -179,7 +200,7 @@ public class MARmq {
     
     public void sendFile(String filePath, String rootElementName) throws IOException {
         if (Connected()) {
-            destination = getDestinationTopic();
+            destination = getDestinationTopic(mainTopic);
             
             if (destination != null) {
                 try {
@@ -248,7 +269,7 @@ public class MARmq {
     
     public void activateReceiver() {
         if (Connected()) {
-            destination = getDestinationTopic();
+            destination = getDestinationTopic(mainTopic);
             
             if (destination != null) {
                 try {
@@ -256,7 +277,7 @@ public class MARmq {
                     //consumer.setMessageListener(new Listener());
                     ActiveMQTopic topic = (ActiveMQTopic)destination;
                     MessageConsumer consumer = session.createDurableSubscriber(topic, "subFromPath("+projectPath+")");
-                    consumer.setMessageListener(new Listener());
+                    consumer.setMessageListener(new Listener(this));
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -308,6 +329,22 @@ public class MARmq {
         }
     }
     
+    public void buildReport(String reportName) {
+        if (Connected()) {
+            try {
+                String topicName = reportName + "_From_" + connection.getClientID();
+                destination = getDestinationTopic(topicName);
+                
+                if (destination != null) {
+                    //тут посылка сообщения GET другому
+                }
+            } catch (JMSException ex) {
+                logger.error(ex);
+            }
+            
+        }
+    }
+    
     public void closeConnection() {
         if (connection != null) {
             try {
@@ -320,13 +357,20 @@ public class MARmq {
 
 
     public class Listener implements MessageListener {
+        
+        private MARmq messageQueue;
+        
+        public Listener(MARmq mq) {
+            messageQueue = mq;
+        }
+        
         public void onMessage(Message msg) {
             BytesMessage bytesMessage = (BytesMessage)msg;
 
             try {
                 String ip = msg.getStringProperty("ip");
-                String fileName = msg.getStringProperty("filename");
                 String schemeName = msg.getStringProperty("scheme_name");
+                String fileName = msg.getStringProperty("filename");
                 
                 logger.info("receive message: [IP " + ip + "], " +
                             "[scheme name " + schemeName + "], " +
@@ -336,6 +380,9 @@ public class MARmq {
                 //своё сообщение не принимаем
                 if (messageIds.contains(msg.getStringProperty("md5")))
                     return;
+                
+                //сохраняем записаь о пришедшем сообщении в БД
+                messageQueue.saveMapping(ip, schemeName, fileName);
                 
                 byte[] bytes = new byte[(int)bytesMessage.getBodyLength()];
                 bytesMessage.readBytes(bytes);
