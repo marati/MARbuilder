@@ -18,6 +18,7 @@ public final class XsdGen {
 
     private static final String XSD_NS_URI = "http://www.w3.org/2001/XMLSchema";
     private final String XSD_PREFIX;
+    private String rootElementName = null;
 
     private Document doc = null;
 
@@ -152,10 +153,12 @@ public final class XsdGen {
             }
         }
 
+        rootElementName = rootElement.getLocalName(); //mini-hardcode
+        
         // Adding the root element:
         Element rootElementXsd = new Element(XSD_PREFIX + ":element", XSD_NS_URI);
         {
-            rootElementXsd.addAttribute(new Attribute("name", rootElement.getLocalName()));
+            rootElementXsd.addAttribute(new Attribute("name", rootElementName));
             outRoot.appendChild(rootElementXsd);
         }
 
@@ -177,17 +180,19 @@ public final class XsdGen {
         }
     }
 
-    public void write(final OutputStream os) throws IOException {
+    public String write(final OutputStream os) throws IOException {
         if(doc == null) throw new IllegalStateException("Call parse() before calling this method!");
         write(os, Charset.forName("UTF-8"));
+        return rootElementName;
     }
 
-    public void write(final OutputStream os, final Charset charset) throws IOException {
+    public String write(final OutputStream os, final Charset charset) throws IOException {
         if(doc == null) throw new IllegalStateException("Call parse() before calling this method!");
         // Display output:
         Serializer serializer = new Serializer(os, charset.name());
         serializer.setIndent(2);
         serializer.write(doc);
+        return rootElementName;
     }
 
     @Override

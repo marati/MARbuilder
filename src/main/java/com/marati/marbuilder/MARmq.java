@@ -4,21 +4,29 @@ import javax.jms.*;
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.command.ActiveMQTopic;
+import org.apache.log4j.Logger;
 
-import java.awt.event.*;
+//import java.awt.event.*;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.logging.*;
+import java.util.HashMap;
+import java.net.URL;
 import java.math.BigInteger;
 
-import java.security.DigestInputStream;
+//import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import com.marati.marbuilder.MarForm;
-import gen.JTableGen;
-import java.util.HashMap;
+//import java.io.BufferedReader;
+//import java.io.InputStreamReader;
+
 import nu.xom.ParsingException;
+import gen.JTableGen;
+
+import com.marati.marbuilder.JdbcConnects;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.logging.Level;
 
 
 /**
@@ -31,13 +39,38 @@ public class MARmq {
     private static Connection connection = null; 
     private static Session session;
     private static Destination destination; 
+    private static Logger logger = Logger.getLogger(MARmq.class);
+    
     private final static String topic = "MARtopic";
     private final JTableGen tablesGen;
     private static String projectPath = null;
     private static ArrayList<String> messageIds;
+    private static final java.sql.Connection sqliteCon = JdbcConnects.getSqliteConnection();
     
     public MARmq(JTableGen tablesGenner) {
         tablesGen = tablesGenner;
+        
+        createMappingScheme();
+    }
+    
+    private void createMappingScheme() {
+        try {
+            Statement createStatement = sqliteCon.createStatement();
+
+            String createQuery = 
+                    "CREATE TABLE scheme_mapping (" +
+                    "id int primary key not null," +
+                    "ip text not null," +
+                    "scheme_name text not null," +
+                    "file_name text not null," +
+                    "columns text not null)";
+            
+            createStatement.executeUpdate(createQuery);
+            createStatement.close();
+        } catch (SQLException ex) {
+            logger.info(ex);
+        }
+                        
     }
     
     public void updateProjectPath(String path) {
@@ -64,18 +97,13 @@ public class MARmq {
                 
                 //сессия без транзакций
                 session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-                
-                ActiveMQTopic topic = (ActiveMQTopic)getDestinationTopic();
-
-                MessageConsumer consumer = session.createDurableSubscriber(topic, "subFromPath("+projectPath+")");
-                consumer.setMessageListener(new Listener());
             } else {
                 connection.start();
             }
             
             return true;
         } catch (JMSException ex) {
-            Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error(ex);
             return false;
         }
     }
@@ -84,12 +112,32 @@ public class MARmq {
         try {
             return session.createTopic(topic);
         } catch (JMSException ex) {
-            Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error(ex);
             return null;
         }
     }
     
-    public void sendFile(String filePath) throws IOException {
+    private static String getIp() throws IOException {
+        URL anyUrl = new URL("http://mgupi.ru");
+        BufferedReader in = null;
+        
+        try {
+            in = new BufferedReader(new InputStreamReader(
+                    anyUrl.openStream()));
+            String ip = in.readLine();
+            return ip;
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    logger.error(e);
+                }
+            }
+        }
+    }
+    
+    public void sendFile(String filePath, String rootElementName) throws IOException {
         if (Connected()) {
             destination = getDestinationTopic();
             
@@ -103,10 +151,14 @@ public class MARmq {
                     
                     long length = fileToSending.length();
                     if (length > Integer.MAX_VALUE) {
-                        Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, "Файл очень большой");
+                        logger.debug("Файл очень большой");
                     }
                     
                     BytesMessage bytesMessage = session.createBytesMessage();
+                    
+                    //write ip & filename properties
+                    bytesMessage.setStringProperty("ip", getIp());
+                    bytesMessage.setStringProperty("scheme_name", rootElementName);
                     bytesMessage.setStringProperty("filename", fileToSending.getName());
                     
                     byte[] bytes = new byte[(int)length];
@@ -135,18 +187,18 @@ public class MARmq {
                         System.out.println("send bytes, messageIds: " + messageIds.toString());
                         
                     } catch (final NoSuchAlgorithmException e) {
-                        Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, e.toString());
+                        logger.error(e.toString());
                     }
 
                     is.close();
                     
                     producer.send(bytesMessage);
                 } catch (JMSException ex) {
-                    Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex);
                 }
             }
         } else {
-            Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, "Соединение закрыто");
+            logger.info("Соединение закрыто");
         }
     }
     
@@ -160,14 +212,17 @@ public class MARmq {
             
             if (destination != null) {
                 try {
-                    MessageConsumer consumer = session.createConsumer(destination);
+                    //MessageConsumer consumer = session.createConsumer(destination);
+                    //consumer.setMessageListener(new Listener());
+                    ActiveMQTopic topic = (ActiveMQTopic)destination;
+                    MessageConsumer consumer = session.createDurableSubscriber(topic, "subFromPath("+projectPath+")");
                     consumer.setMessageListener(new Listener());
                 } catch (JMSException ex) {
-                    Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex);
                 }
             }
         } else {
-            Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, "Соединение закрыто");
+            logger.info("Соединение закрыто");
         }
     }
     
@@ -182,7 +237,7 @@ public class MARmq {
             
             //messagesStream
         } catch (IOException ex) {
-            Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+           logger.error(ex);
         }
         
         return messagesBuffer.toString();
@@ -197,18 +252,18 @@ public class MARmq {
             try {
                 messageIds = (ArrayList)inputMessages.readObject();
             } catch (ClassNotFoundException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error(ex);
             }
             
             inputMessages.close();
             messagesBuffer.close();
         } catch (IOException ex) {
-            Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error(ex);
         } finally {
             try {
                 inputMessages.close();
             } catch (IOException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error(ex);
             }
         }
     }
@@ -218,7 +273,7 @@ public class MARmq {
             try {
                 connection.close();
             } catch (JMSException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.info(ex);
             }
         }
     }
@@ -229,38 +284,42 @@ public class MARmq {
             BytesMessage bytesMessage = (BytesMessage)msg;
 
             try {
-                System.out.println("msg receive " + 
-                        msg.getStringProperty("filename") + " " + msg.getJMSMessageID());
+                String ip = msg.getStringProperty("ip");
+                String fileName = msg.getStringProperty("filename");
+                String schemeName = msg.getStringProperty("scheme_name");
+                
+                logger.info("receive message: [IP " + ip + "], " +
+                            "[scheme name " + schemeName + "], " +
+                            "[file name " + fileName + "], " +
+                            "[ID " + msg.getJMSMessageID() + "]");
+                
                 //своё сообщение не принимаем
                 if (messageIds.contains(msg.getStringProperty("md5")))
                     return;
                 
                 byte[] bytes = new byte[(int)bytesMessage.getBodyLength()];
                 bytesMessage.readBytes(bytes);
-                
-                String fileName = new String(msg.getStringProperty("filename"));
+
                 int dotPos = fileName.lastIndexOf(".");
                 
                 String xsdDir = null;
                 String extention = fileName.substring(dotPos);
-                if (extention.equals("xsd")) {
+                if (extention.equals(".xsd")) {
                     xsdDir = new String(projectPath + File.separator + "xsd");
                 } else {
-                    Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, "fail parse file: " + extention);
+                    logger.error("fail parse file: " + extention);
                     return;
                 }
 
-                
-
-                File receivedFile = new File(xsdDir + fileName);
+                File receivedFile = new File(xsdDir + File.separator + fileName);
 
                 FileOutputStream fos = new FileOutputStream(receivedFile);
                 try {
                     fos.write(bytes);
-                    System.out.println("write in file from MARmq");
+                    logger.info("write in file " + receivedFile.getAbsolutePath());
                     fos.close();
                 } catch (IOException ex) {
-                    Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex.toString());
                 }
 
                 HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
@@ -273,13 +332,13 @@ public class MARmq {
                 tablesGen.createTablesFromXsd(dirsAndTheirFiles);
 
             } catch (JMSException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error(ex);
             } catch (FileNotFoundException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error(ex);
             } catch (ParsingException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error(ex);
             } catch (IOException ex) {
-                Logger.getLogger(MARmq.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error(ex);
             }
         }
     }

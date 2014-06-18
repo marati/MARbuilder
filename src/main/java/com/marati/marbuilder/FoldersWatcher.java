@@ -86,9 +86,9 @@ public class FoldersWatcher {
                 
                 if (currentFile.length() == 0) {
                     OutputStream os = new FileOutputStream(currentFile);
-                    xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
+                    String rootElementName = xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                     
-                    messageQueue.sendFile(currentFile.getAbsolutePath());
+                    messageQueue.sendFile(currentFile.getAbsolutePath(), rootElementName);
                 }
                 
             }
