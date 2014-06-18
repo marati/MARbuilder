@@ -4,9 +4,12 @@
 *.jar
 *.war
 *.ear
+*.db
+/log/
 /dist/
 /build/
 /nbproject/private/
 build.xml
 /nbproject/
 /target/
+/target/surefire-reports/
