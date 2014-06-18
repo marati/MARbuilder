@@ -8,9 +8,8 @@ import org.apache.log4j.Logger;
 
 //import java.awt.event.*;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.net.URL;
+import java.util.*;
+import java.net.*;
 import java.math.BigInteger;
 
 //import java.security.DigestInputStream;
@@ -27,6 +26,7 @@ import com.marati.marbuilder.JdbcConnects;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 
 /**
@@ -117,8 +117,8 @@ public class MARmq {
         }
     }
     
-    private static String getIp() throws IOException {
-        URL anyUrl = new URL("http://mgupi.ru");
+    private static String getIp() /*throws IOException*/ {
+        /*URL anyUrl = new URL("http://mgupi.ru");
         BufferedReader in = null;
         
         try {
@@ -134,7 +134,46 @@ public class MARmq {
                     logger.error(e);
                 }
             }
+        }*/
+        String ipv4 = null;
+        Enumeration<NetworkInterface> nets;
+        
+        try {
+            nets = NetworkInterface.getNetworkInterfaces();
+            
+            Boolean breakCycle = false; 
+            
+            for (NetworkInterface netint : Collections.list(nets)) {
+                System.out.printf("Display name: %s\n", netint.getDisplayName());
+                
+                if (!netint.getDisplayName().contains("Wireless"))
+                    continue;
+                else
+                    breakCycle = true;
+                
+                Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
+                for (InetAddress inetAddress : Collections.list(inetAddresses)) {
+                    Pattern ip = Pattern.compile("/[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
+                    String inetAddr = inetAddress.toString();
+                    
+                    if (ip.matcher(inetAddr).matches()) {
+                        ipv4 = inetAddr;
+                        break;
+                    }
+                    
+                    System.out.printf("InetAddress: %s\n", inetAddress);
+                }
+                
+                if (breakCycle)
+                    break;
+            }
+            
+            
+        } catch (SocketException ex) {
+            logger.error(ex);
         }
+        
+        return ipv4;
     }
     
     public void sendFile(String filePath, String rootElementName) throws IOException {
