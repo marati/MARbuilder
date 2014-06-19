@@ -14,10 +14,12 @@ import org.apache.log4j.Logger;
 public class MessageQueueListener implements MessageListener {
 
     private MARmq messageQueue;
+    private String projectPath;
     private static Logger logger = Logger.getLogger(MessageQueueListener.class);
 
-    public MessageQueueListener(MARmq mq) {
+    public MessageQueueListener(MARmq mq, String projPath) {
         messageQueue = mq;
+        projectPath = projPath;
     }
 
     public void onMessage(Message msg) {
@@ -34,8 +36,10 @@ public class MessageQueueListener implements MessageListener {
                         "[ID " + msg.getJMSMessageID() + "]");
 
             //своё сообщение не принимаем
-            if (messageIds.contains(msg.getStringProperty("md5")))
+            if (messageQueue.messageContains(msg.getStringProperty("md5"))) {
+                System.out.println("своё сообщение пришло" + msg.getStringProperty("md5"));
                 return;
+            }
 
             //сохраняем записаь о пришедшем сообщении в БД
             messageQueue.saveMapping(ip, schemeName, fileName);
@@ -65,20 +69,11 @@ public class MessageQueueListener implements MessageListener {
                 logger.error(ex.toString());
             }
 
-            HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
-            ArrayList<String> filesNameWithoutExt = new ArrayList<String>();
-
-            filesNameWithoutExt.add( fileName.substring(0, dotPos) );
-
-            dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
-
-            tablesGen.createTablesFromXsd(dirsAndTheirFiles);
+            messageQueue.schemeMessageReceived(xsdDir, fileName);
 
         } catch (JMSException ex) {
             logger.error(ex);
         } catch (FileNotFoundException ex) {
-            logger.error(ex);
-        } catch (ParsingException ex) {
             logger.error(ex);
         } catch (IOException ex) {
             logger.error(ex);

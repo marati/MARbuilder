@@ -8,21 +8,17 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.net.*;
-import java.sql.PreparedStatement;
 import java.math.BigInteger;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import nu.xom.ParsingException;
-import gen.JTableGen;
 
-import com.marati.marbuilder.JdbcConnects;
-import java.sql.SQLException;
-import java.sql.Statement;
-//import java.util.logging.Level;
-import java.util.regex.Pattern;
+import com.marati.marbuilder.MARmqDatabase;
+import gen.JTableGen;
 
 
 /**
@@ -36,62 +32,18 @@ public class MARmq {
     private static Session session;
     private static Destination destination; 
     private static Logger logger = Logger.getLogger(MARmq.class);
+    private final MARmqDatabase marDatabase = new MARmqDatabase();
     
     private final static String mainTopic = "MARtopic";
     private final JTableGen tablesGen;
     private static String projectPath = null;
-    private static ArrayList<String> messageIds;
-    private static final java.sql.Connection sqliteCon = JdbcConnects.getSqliteConnection();
     
     public MARmq(JTableGen tablesGenner) {
         tablesGen = tablesGenner;
-        
-        createMappingScheme();
-    }
-    
-    private void createMappingScheme() {
-        try {
-            Statement createStatement = sqliteCon.createStatement();
-
-            String createQuery = 
-                    "CREATE TABLE scheme_mapping (" +
-                    "id integer primary key autoincrement not null," +
-                    "ip text not null," +
-                    "scheme_name text not null," +
-                    "file_name text not null)";
-                    //"columns text not null)";
-            
-            createStatement.executeUpdate(createQuery);
-            createStatement.close();
-        } catch (SQLException ex) {
-            logger.info(ex);
-        }               
-    }
-    
-    public void saveMapping(String ip, String schemeName, String fileName) {
-        try {
-            String insertQuery = 
-                    "INSERT INTO scheme_mapping (ip, scheme_name, file_name)" +
-                    "VALUES (?, ?, ?)";
-            
-            PreparedStatement ps = sqliteCon.prepareStatement(insertQuery);
-            ps.setString(1, ip);
-            ps.setString(2, schemeName);
-            ps.setString(3, fileName);
-            ps.executeUpdate();
-            
-            String loggerInfo = String.format("insert into scheme_mapping [%s, %s, %s]",
-                                              ip, schemeName, fileName);
-            logger.info(loggerInfo);
-            ps.close();
-        } catch (SQLException ex) {
-            logger.info(ex);
-        }  
     }
     
     public void updateProjectPath(String path) {
         projectPath = path;
-        messageIds = new ArrayList<String>();
     }
     
     private static ActiveMQConnectionFactory getConnectionFactory(){
@@ -143,7 +95,6 @@ public class MARmq {
             Boolean breakCycle = false; 
             
             for (NetworkInterface netint : Collections.list(nets)) {
-                System.out.printf("Display name: %s\n", netint.getDisplayName());
                 
                 String netintName = netint.getDisplayName();
                 if (!netintName.contains("Wireless") &&  !netintName.contains("lan"))
@@ -158,10 +109,9 @@ public class MARmq {
                     
                     if (ip.matcher(inetAddr).matches()) {
                         ipv4 = inetAddr.substring(1, inetAddr.length());
+                        logger.info("IP: " + ipv4);
                         break;
                     }
-                    
-                    System.out.printf("InetAddress: %s\n", inetAddress);
                 }
                 
                 if (breakCycle)
@@ -221,9 +171,10 @@ public class MARmq {
                         }
 
                         String md5file = new BigInteger(1, md.digest()).toString(16);
-                        messageIds.add(md5file);
+                        marDatabase.saveMessageId(md5file);
                         bytesMessage.setStringProperty("md5", md5file);
-                        System.out.println("send bytes, messageIds: " + messageIds.toString());
+                        
+                        logger.info("preparation to send message, ID: " + md5file);
                         
                     } catch (final NoSuchAlgorithmException e) {
                         logger.error(e.toString());
@@ -254,8 +205,10 @@ public class MARmq {
                     //MessageConsumer consumer = session.createConsumer(destination);
                     //consumer.setMessageListener(new Listener());
                     ActiveMQTopic topic = (ActiveMQTopic)destination;
-                    MessageConsumer consumer = session.createDurableSubscriber(topic, "subFromPath("+projectPath+")");
-                    consumer.setMessageListener(new MessageQueueListener(this));
+                    MessageConsumer consumer = session.createDurableSubscriber(
+                            topic,
+                            "subFromPath("+projectPath+")");
+                    consumer.setMessageListener(new MessageQueueListener(this, projectPath));
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -265,6 +218,7 @@ public class MARmq {
         }
     }
     
+    /*сериализация messageIds пока не нужна, сделан переход к хранению в БД
     public String getReceiveIds() {
         ByteArrayOutputStream messagesBuffer = new ByteArrayOutputStream();
         
@@ -272,8 +226,6 @@ public class MARmq {
             ObjectOutputStream outputMessages = new ObjectOutputStream(messagesBuffer);
             outputMessages.writeObject(messageIds);
             outputMessages.close();
-            
-            //messagesStream
         } catch (IOException ex) {
            logger.error(ex);
         }
@@ -304,7 +256,7 @@ public class MARmq {
                 logger.error(ex);
             }
         }
-    }
+    }*/
     
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         if (Connected()) {
@@ -328,87 +280,37 @@ public class MARmq {
         }
     }
     
+    public void saveMapping(String ip, String schemeName, String fileName) {
+        marDatabase.saveMapping(ip, schemeName, fileName);
+    }
+    
+    public Boolean messageContains(String id) {
+        return marDatabase.messageIdContains(id);
+    }
+    
+    public void schemeMessageReceived(String xsdDir, String fileName) {
+        HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
+
+        ArrayList<String> filesNameWithoutExt = new ArrayList<String>();
+        int dotPos = fileName.lastIndexOf(".");
+        filesNameWithoutExt.add( fileName.substring(0, dotPos) );
+
+        dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
+        try {
+            tablesGen.createTablesFromXsd(dirsAndTheirFiles);
+        } catch (ParsingException ex) {
+            logger.error(ex);
+        } catch (IOException ex) {
+            logger.error(ex);
+        }
+    }
+    
     public void closeConnection() {
         if (connection != null) {
             try {
                 connection.close();
             } catch (JMSException ex) {
                 logger.info(ex);
-            }
-        }
-    }
-
-
-    public class MessageQueueListener implements MessageListener {
-        
-        private MARmq messageQueue;
-        
-        public MessageQueueListener(MARmq mq) {
-            messageQueue = mq;
-        }
-        
-        public void onMessage(Message msg) {
-            BytesMessage bytesMessage = (BytesMessage)msg;
-
-            try {
-                String ip = msg.getStringProperty("ip");
-                String schemeName = msg.getStringProperty("scheme_name");
-                String fileName = msg.getStringProperty("filename");
-                
-                logger.info("receive message: [IP " + ip + "], " +
-                            "[scheme name " + schemeName + "], " +
-                            "[file name " + fileName + "], " +
-                            "[ID " + msg.getJMSMessageID() + "]");
-                
-                //своё сообщение не принимаем
-                if (messageIds.contains(msg.getStringProperty("md5")))
-                    return;
-                
-                //сохраняем записаь о пришедшем сообщении в БД
-                messageQueue.saveMapping(ip, schemeName, fileName);
-                
-                byte[] bytes = new byte[(int)bytesMessage.getBodyLength()];
-                bytesMessage.readBytes(bytes);
-
-                int dotPos = fileName.lastIndexOf(".");
-                
-                String xsdDir = null;
-                String extention = fileName.substring(dotPos);
-                if (extention.equals(".xsd")) {
-                    xsdDir = new String(projectPath + File.separator + "xsd");
-                } else {
-                    logger.error("fail parse file: " + extention);
-                    return;
-                }
-
-                File receivedFile = new File(xsdDir + File.separator + fileName);
-
-                FileOutputStream fos = new FileOutputStream(receivedFile);
-                try {
-                    fos.write(bytes);
-                    logger.info("write in file " + receivedFile.getAbsolutePath());
-                    fos.close();
-                } catch (IOException ex) {
-                    logger.error(ex.toString());
-                }
-
-                HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
-                ArrayList<String> filesNameWithoutExt = new ArrayList<String>();
-                
-                filesNameWithoutExt.add( fileName.substring(0, dotPos) );
-                
-                dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
-                
-                tablesGen.createTablesFromXsd(dirsAndTheirFiles);
-
-            } catch (JMSException ex) {
-                logger.error(ex);
-            } catch (FileNotFoundException ex) {
-                logger.error(ex);
-            } catch (ParsingException ex) {
-                logger.error(ex);
-            } catch (IOException ex) {
-                logger.error(ex);
             }
         }
     }

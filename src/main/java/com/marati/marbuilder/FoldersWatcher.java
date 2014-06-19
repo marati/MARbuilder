@@ -3,6 +3,7 @@ package com.marati.marbuilder;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
+import org.apache.log4j.Logger;
 
 import gen.ParseException;
 import gen.XsdGen;
@@ -20,6 +21,7 @@ public class FoldersWatcher {
     private final XsdGen xsdGen;
     private final JTableGen tablesGen;
     private final MARmq messageQueue;
+    private static final Logger logger = Logger.getLogger(FoldersWatcher.class);
     
     public FoldersWatcher(JTableGen tablesGenner) {
         xsdGen = new XsdGen();
@@ -77,9 +79,9 @@ public class FoldersWatcher {
                         xsdDir + File.separator + fileName + ".xsd"
                 );
                 
-                System.out.println("working file: " + currentFile.toString());
-                
                 if (currentFile.length() == 0) {
+                    logger.info("File " + currentFile.getAbsolutePath() + " not found, create XSD");
+                    
                     OutputStream os = new FileOutputStream(currentFile);
                     String rootElementName = xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                     
@@ -117,13 +119,13 @@ public class FoldersWatcher {
         checkCurrentExtDir(extDirs);
     }
     
-    public String getReceivedMessageIdsByString() {
+    /*public String getReceivedMessageIdsByString() {
         return messageQueue.getReceiveIds();
     }
     
     public void setReceivedMessageIds(String messageIds) {
         messageQueue.setReceiveIds(messageIds);
-    }
+    }*/
     
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         messageQueue.buildReport(reportName, choosedColumns);

@@ -1,9 +1,6 @@
 package gen;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.*;
+import java.util.*;
 import java.io.File;
 import java.io.IOException;
 import nu.xom.Attribute;
@@ -12,20 +9,21 @@ import nu.xom.Document;
 import nu.xom.Builder;
 import nu.xom.Element;
 import nu.xom.Elements;
+import org.apache.log4j.Logger;
 
 import com.marati.marbuilder.MarForm;
 
 public class JTableGen {
     private final MarForm marForm;
     
-    HashMap<String, ArrayList<String>> tables;
+    HashMap<String, ArrayList<String>> tables = new HashMap<String, ArrayList<String>>();
     String tableName;
     ArrayList<String> columns;
     private Document doc = null;
+    private static Logger logger = Logger.getLogger(JTableGen.class);
     
     public JTableGen(MarForm mainMarForm) {
         marForm = mainMarForm;
-        tables = new HashMap<String, ArrayList<String>>();
     }
     
     private void recurseXsd(Element parent) {
@@ -44,10 +42,10 @@ public class JTableGen {
                         Attribute attr = child.getAttribute(a);
                         //System.out.println("child" + attr.getLocalName());
                         if (attr.getLocalName().equals("maxOccurs")) {
-                            if (!attr.getValue().equals("unbounded")) {
-                                System.out.println("attr name" + attr.getValue());
+                            //if (!attr.getValue().equals("unbounded")) {
+                                //System.out.println("attr name" + attr.getValue());
                                 columns.add(child.getAttributeValue("name"));
-                            }
+                            //}
                         }
                     }
                 }
@@ -84,8 +82,8 @@ public class JTableGen {
                 File xsdFile = new File(curentDir + File.separator + fileName + ".xsd");
                 parseXsd(xsdFile);
                 
-                String logMessage = new String("Convert: " + fileName + ".xml to" + xsdFile.getName());
-                Logger.getLogger(JTableGen.class.getName()).log(Level.INFO, null, logMessage);
+                String logMessage = new String("Convert: " + fileName + ".xml to " + xsdFile.getName());
+                logger.info(logMessage);
             }
         }
         

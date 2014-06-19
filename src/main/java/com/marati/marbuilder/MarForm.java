@@ -140,21 +140,19 @@ public class MarForm extends JFrame
     }
     
     private void readSettings() {
-        try {
+        //try {
             Preferences prefs = Preferences.userNodeForPackage(getClass());
             
-            //if (prefs.nodeExists(LOCATION)) {
-                String location = prefs.get(LOCATION, "");
-                locationLabel.setText(location);
-            //}
+            String location = prefs.get(LOCATION, "");
+            locationLabel.setText(location);
             
-            if (prefs.nodeExists(MESSAGE_IDS)) {
+            /*if (prefs.nodeExists(MESSAGE_IDS)) {
                 String messageIds = prefs.get(MESSAGE_IDS, "");
                 foldersWatcher.setReceivedMessageIds(messageIds);
-            }
-        } catch (BackingStoreException ex) {
-            Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
-        }
+            }*/
+//        } catch (BackingStoreException ex) {
+//            Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+//        }
     }
     
     private void saveSettings() {
