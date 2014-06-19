@@ -6,19 +6,14 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.command.ActiveMQTopic;
 import org.apache.log4j.Logger;
 
-//import java.awt.event.*;
 import java.io.*;
 import java.util.*;
 import java.net.*;
 import java.sql.PreparedStatement;
 import java.math.BigInteger;
 
-//import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-
-//import java.io.BufferedReader;
-//import java.io.InputStreamReader;
 
 import nu.xom.ParsingException;
 import gen.JTableGen;
@@ -26,7 +21,7 @@ import gen.JTableGen;
 import com.marati.marbuilder.JdbcConnects;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.logging.Level;
+//import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 
@@ -138,24 +133,7 @@ public class MARmq {
         }
     }
     
-    private static String getIp() /*throws IOException*/ {
-        /*URL anyUrl = new URL("http://mgupi.ru");
-        BufferedReader in = null;
-        
-        try {
-            in = new BufferedReader(new InputStreamReader(
-                    anyUrl.openStream()));
-            String ip = in.readLine();
-            return ip;
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    logger.error(e);
-                }
-            }
-        }*/
+    private static String getIp() {
         String ipv4 = null;
         Enumeration<NetworkInterface> nets;
         
@@ -277,7 +255,7 @@ public class MARmq {
                     //consumer.setMessageListener(new Listener());
                     ActiveMQTopic topic = (ActiveMQTopic)destination;
                     MessageConsumer consumer = session.createDurableSubscriber(topic, "subFromPath("+projectPath+")");
-                    consumer.setMessageListener(new Listener(this));
+                    consumer.setMessageListener(new MessageQueueListener(this));
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -288,7 +266,6 @@ public class MARmq {
     }
     
     public String getReceiveIds() {
-        //return messageIds.toString();
         ByteArrayOutputStream messagesBuffer = new ByteArrayOutputStream();
         
         try {
@@ -329,14 +306,20 @@ public class MARmq {
         }
     }
     
-    public void buildReport(String reportName) {
+    public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         if (Connected()) {
             try {
                 String topicName = reportName + "_From_" + connection.getClientID();
-                destination = getDestinationTopic(topicName);
+                //destination = getDestinationTopic(topicName);
                 
                 if (destination != null) {
                     //тут посылка сообщения GET другому
+                    for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
+                        System.out.print("["+entryChoosed.getKey()+"] =>");
+                        System.out.println(entryChoosed.getValue().toString());
+                    }
+                    
+                    
                 }
             } catch (JMSException ex) {
                 logger.error(ex);
@@ -356,11 +339,11 @@ public class MARmq {
     }
 
 
-    public class Listener implements MessageListener {
+    public class MessageQueueListener implements MessageListener {
         
         private MARmq messageQueue;
         
-        public Listener(MARmq mq) {
+        public MessageQueueListener(MARmq mq) {
             messageQueue = mq;
         }
         

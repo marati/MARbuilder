@@ -16,118 +16,21 @@ import java.awt.datatransfer.*;
 
 import javax.swing.*;
 import javax.swing.table.*;
-//import static javax.swing.TransferHandler.COPY_OR_MOVE;
-//import static javax.swing.TransferHandler.MOVE;
 
-//my
-import com.marati.marbuilder.FoldersWatcher;
-import gen.ParseException;
-import gen.JTableGen;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 
-import java.awt.geom.Dimension2D;
-
+//my
+import com.marati.marbuilder.FoldersWatcher;
+import com.marati.marbuilder.SummaryTable;
+import gen.ParseException;
+import gen.JTableGen;
 
 /**
  *
  * @author marat
  */
-
-class MARDefaultTableModel extends DefaultTableModel {
-    public Vector getColumnIdentifiers() {
-        return columnIdentifiers;
-    }
-    
-    //в этом классе связать имя колонки и имя схемы (привязка не по name, а по id)
-}
-
-class SummaryTable extends JTable {
-    public SummaryTable() {
-        DefaultTableModel model = new MARDefaultTableModel();
-        model.addColumn("Перенесите сюда колонки из левой части");
-        model.addRow(new String[]{"Этот текст пропадёт, если вы что-то перенесёте сюда"});
-        setModel(model);
-        
-        getTableHeader().setDefaultRenderer(new HeaderRenderer());
-        
-        setDragEnabled(true);
-        setTransferHandler(new TableTransferHandler());
-    }
-    
-    //one parameter == one item in menu
-    public void addContextMenu(JMenuItem menuItem) {
-        final JPopupMenu popup = new JPopupMenu();
-        popup.add(menuItem);
-        
-        addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent me) {
-
-            }
-            
-            @Override
-            public void mousePressed(MouseEvent me) {
-                if (SwingUtilities.isRightMouseButton(me)) {
-                    Point currentPoint = me.getPoint();
-                    
-                    int colNumber = columnAtPoint(currentPoint);
-                    int rowNumber = rowAtPoint(currentPoint);
-                    
-                    setColumnSelectionInterval(colNumber, colNumber);
-                    setRowSelectionInterval(rowNumber, rowNumber);
-                }
-                
-                maybeShowPopup(me);
-            }
-            
-            @Override
-            public void mouseReleased(MouseEvent me) {
-                maybeShowPopup(me);
-            }
-            
-            private void maybeShowPopup(MouseEvent me) {
-                if (me.isPopupTrigger()) {
-                    popup.show(me.getComponent(),
-                               me.getX(), me.getY());
-                }
-            }
-            
-        });
-    }
-    
-    public void removeColumnAndData(int colIndex) {
-        MARDefaultTableModel model = (MARDefaultTableModel)getModel();
-        TableColumn col = getColumnModel().getColumn(colIndex);
-        int columnModelIndex = col.getModelIndex();
-        Vector data = model.getDataVector();
-        Vector colIds = model.getColumnIdentifiers();
-
-        // Remove the column from the table
-        removeColumn(col);
-
-        // Remove the column header from the table model
-        colIds.removeElementAt(columnModelIndex);
-
-        // Remove the column data
-        for (int r=0; r<data.size(); r++) {
-            Vector row = (Vector)data.get(r);
-            row.removeElementAt(columnModelIndex);
-        }
-        model.setDataVector(data, colIds);
-
-        Enumeration enums = getColumnModel().getColumns();
-        for (; enums.hasMoreElements(); ) {
-            TableColumn c = (TableColumn)enums.nextElement();
-            if (c.getModelIndex() >= columnModelIndex) {
-                c.setModelIndex(c.getModelIndex()-1);
-            }
-        }
-        model.fireTableStructureChanged();
-    }
-    
-}
 
 public class MarForm extends JFrame
                         implements ActionListener {
@@ -283,12 +186,11 @@ public class MarForm extends JFrame
             
         } else if (e.getSource() == getClientsTables) {
             String nameReportDialog = JOptionPane.showInputDialog(this, "Введите название сводного отчёта:");
-            foldersWatcher.buildReport(nameReportDialog);
-            
-            MARDefaultTableModel marModel = (MARDefaultTableModel)summaryTable.getModel();
-            System.out.println(marModel.getColumnIdentifiers().toString());
-            
 
+            MARDefaultTableModel marModel = (MARDefaultTableModel)summaryTable.getModel();
+            //System.out.println(marModel.getColumnIdentifiers().toString());
+            
+            foldersWatcher.buildReport(nameReportDialog, marModel.getChoosedColumns());
         } else if (e.getSource() == deleteColumnItem) {            
             int selectionColumn = summaryTable.getSelectedColumn();
             //System.out.println("delete menu click" + selectionColumn);
@@ -412,63 +314,4 @@ class ListTransferHandler extends TransferHandler {
     protected void exportDone(JComponent c, Transferable data, int action) {
         cleanup(c, action == MOVE);
     }
-}
-
-class TableTransferHandler extends TransferHandler {
-    
-    //mini-hack with description column
-    private boolean descriptionEnabled = true;
-    
-    protected void importString(JComponent c, String str) {
-        SummaryTable target = (SummaryTable)c;
-        
-        TableModel tableModel= target.getModel();
-        DefaultTableModel model = (DefaultTableModel)tableModel;
-
-        String[] tableNameAndValues = str.split("|");
-        String tableName = tableNameAndValues[0];
-        String rawValues = tableNameAndValues[1];
-        
-        String[] values = rawValues.split("\n");
-        
-        for (int i = 0; i < values.length; i++) {
-            model.addColumn(values[i]);
-            //после add, вызывает метод get last и вызываем ф-цию из MARDEFAULmodel, связывающей имя колонки и схему
-            
-            if (descriptionEnabled) {
-                //remove description column (index = 0)
-                target.removeColumnAndData(0);
-                descriptionEnabled = false;
-            }
-        }
-
-    }
-    
-    public int getSourceActions(JComponent c) {
-        return COPY_OR_MOVE;
-    }
-    
-    public boolean importData(JComponent c, Transferable t) {
-        if (canImport(c, t.getTransferDataFlavors())) {
-            try {
-                String str = (String)t.getTransferData(DataFlavor.stringFlavor);
-                importString(c, str);
-                return true;
-            } catch (UnsupportedFlavorException ufe) {
-            } catch (IOException ioe) {
-            }
-        }
-
-        return false;
-    }
-    
-    public boolean canImport(JComponent c, DataFlavor[] flavors) {
-        for (int i = 0; i < flavors.length; i++) {
-            if (DataFlavor.stringFlavor.equals(flavors[i])) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
 }

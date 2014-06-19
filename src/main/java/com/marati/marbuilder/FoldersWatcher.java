@@ -1,13 +1,8 @@
 package com.marati.marbuilder;
 
-import java.io.File;
-import java.io.FilenameFilter;
-import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 import gen.ParseException;
 import gen.XsdGen;
@@ -130,7 +125,7 @@ public class FoldersWatcher {
         messageQueue.setReceiveIds(messageIds);
     }
     
-    public void buildReport(String reportName/*, Vector columns*/) {
-        messageQueue.buildReport(reportName);
+    public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
+        messageQueue.buildReport(reportName, choosedColumns);
     }
 }
