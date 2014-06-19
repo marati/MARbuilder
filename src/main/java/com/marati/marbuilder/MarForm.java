@@ -134,6 +134,7 @@ public class MarForm extends JFrame
         foldersWatcher = new FoldersWatcher(tablesGenner);
         foldersWatcher.checkWorkingDir(locationPath);
         
+        //UIManager.setLookAndFeel(new syntheticaBlueMoon());
         UIManager.getDefaults (). put ("TabbedPane.lightHighlight" ,  Color.BLACK );
         UIManager.getDefaults (). put ("TabbedPane.selectHighlight",  Color.BLACK );
         UIManager.getDefaults().put("TabbedPane.contentBorderInsets", new Insets(0,0,0,0));

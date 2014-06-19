@@ -261,10 +261,10 @@ public class MARmq {
                 String topicName = reportName + "_From_" + connection.getClientID();
                 Destination currentTopicDestionation = getDestinationTopic(topicName);
                 
-                mainDestination = getDestinationTopic(xsdTopic);
+                Destination serviceDestination = getDestinationTopic(serviceTopic);
                 
-                if (mainDestination != null) {
-                    MessageProducer producer = session.createProducer(mainDestination);
+                if (serviceDestination != null) {
+                    MessageProducer producer = session.createProducer(serviceDestination);
                     producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                     
                     String messageText = "GET";
@@ -272,18 +272,19 @@ public class MARmq {
                     for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
                         String messageId = marDatabase.getMessageIdBySchemeName(entryChoosed.getKey());
                         
-                        TextMessage newGetMessage = session.createTextMessage();
-                        newGetMessage.setText(messageText);
-                        newGetMessage.setJMSCorrelationID(messageId);
-                        newGetMessage.setJMSReplyTo(currentTopicDestionation);
+                        TextMessage getMessage = session.createTextMessage();
+                        getMessage.setText(messageText);
+                        //ответить на сообщение (ID из БД)
+                        getMessage.setJMSCorrelationID(messageId);
+                        //указание топика, на который должны будут прислать ответ клиенту-инициатору
+                        getMessage.setJMSReplyTo(currentTopicDestionation);
                         
-                        newGetMessage.setStringProperty("scheme", entryChoosed.getKey());
-                        newGetMessage.setStringProperty("columns", entryChoosed.getValue().toString());
+                        getMessage.setStringProperty("scheme", entryChoosed.getKey());
+                        getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
                         
                         System.out.print("["+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());
                     }
-                    
                     
                 }
             } catch (JMSException ex) {

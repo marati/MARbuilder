@@ -36,6 +36,11 @@
         <artifactId>sqlite-jdbc</artifactId>
         <version>3.7.2</version>
      </dependency>
+    <dependency>
+        <groupId>de.sciss</groupId>
+        <artifactId>weblaf</artifactId>
+        <version>1.27</version>
+    </dependency>
   </dependencies>
   
     <build>

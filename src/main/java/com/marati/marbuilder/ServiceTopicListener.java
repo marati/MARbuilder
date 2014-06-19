@@ -33,7 +33,8 @@ public class ServiceTopicListener implements MessageListener {
             String command = textMessage.getText();
             
             if (command.equals("GET")) {
-                logger.info(" scheme property: ");
+                logger.info("scheme property: " + msg.getStringProperty("scheme"));
+                logger.info("columns property: " + msg.getStringProperty("columns"));
             }
             
         } catch (JMSException ex) {

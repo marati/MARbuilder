@@ -3,6 +3,7 @@ package com.marati.marbuilder;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import com.alee.laf.WebLookAndFeel;
 
 import com.marati.marbuilder.MarForm;
 import gen.ParseException;
@@ -31,7 +32,8 @@ public class MARbuilder {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                UIManager.put("swing.boldMetal", Boolean.FALSE); 
+                //UIManager.put("swing.boldMetal", Boolean.FALSE); 
+                WebLookAndFeel.install();
                 try {
                     createAndShowGUI();
                 } catch (ParseException ex) {
