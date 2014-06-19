@@ -33,8 +33,17 @@ public class ServiceTopicListener implements MessageListener {
             String command = textMessage.getText();
             
             if (command.equals("GET")) {
+                String columnsStr = msg.getStringProperty("columns");
+                
+                logger.info("receive GET");
                 logger.info("scheme property: " + msg.getStringProperty("scheme"));
-                logger.info("columns property: " + msg.getStringProperty("columns"));
+                logger.info("columns property: " + columnsStr);
+                
+                String fileName = messageQueue.getAttributeFromDatabase("file_name",
+                        msg.getStringProperty("scheme"));
+
+                
+                messageQueue.createXmlData(fileName, columnsStr.split(","));
             }
             
         } catch (JMSException ex) {

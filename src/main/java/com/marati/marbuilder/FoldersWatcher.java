@@ -7,7 +7,7 @@ import org.apache.log4j.Logger;
 
 import gen.ParseException;
 import gen.XsdGen;
-import gen.JTableGen;
+import gen.DocUtil;
 import nu.xom.ParsingException;
 
 import com.marati.marbuilder.MARmq;
@@ -19,11 +19,11 @@ public class FoldersWatcher {
     
     private String workingPath = "";
     private final XsdGen xsdGen;
-    private final JTableGen tablesGen;
+    private final DocUtil tablesGen;
     private final MARmq messageQueue;
     private static final Logger logger = Logger.getLogger(FoldersWatcher.class);
     
-    public FoldersWatcher(JTableGen tablesGenner) {
+    public FoldersWatcher(DocUtil tablesGenner) {
         xsdGen = new XsdGen();
         tablesGen = tablesGenner;
         

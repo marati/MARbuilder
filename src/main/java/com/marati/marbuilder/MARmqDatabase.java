@@ -58,18 +58,18 @@ public class MARmqDatabase {
         }  
     }
     
-    public String getMessageIdBySchemeName(String schemeName) {
-        String messageId = null;
+    public String getAttributeBySchemeName(String attribute, String schemeName) {
+        String returnAttribute = null;
         
         try {
-            String selectIpQuery = "SELECT message_id FROM scheme_mapping WHERE scheme_name = (?)";
+            String selectQuery = "SELECT " + attribute + " FROM scheme_mapping WHERE scheme_name = (?)";
             
-            PreparedStatement ps = sqliteCon.prepareStatement(selectIpQuery);
+            PreparedStatement ps = sqliteCon.prepareStatement(selectQuery);
             ps.setString(1, schemeName);
             
             ResultSet rs = ps.executeQuery();
             while ( rs.next() ) {
-                messageId = rs.getString("message_id");
+                returnAttribute = rs.getString(attribute);
             }
             
             ps.close();
@@ -77,7 +77,7 @@ public class MARmqDatabase {
             logger.info(ex);
         }  
         
-        return messageId;
+        return returnAttribute;
     }
     
     public void saveMapping(String messageId, String ip, String schemeName, String fileName) {

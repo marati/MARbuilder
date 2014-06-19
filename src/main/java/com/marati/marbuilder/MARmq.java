@@ -18,7 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import nu.xom.ParsingException;
 
 import com.marati.marbuilder.MARmqDatabase;
-import gen.JTableGen;
+import gen.DocUtil;
 
 
 /**
@@ -37,14 +37,15 @@ public class MARmq {
     private final static String xsdTopic = "XsdTopic";
     private final static String serviceTopic = "ServiceTopic";
     private static String projectPath = null;
-    private final JTableGen tablesGen;
+    private final DocUtil docUtil;
     
-    public MARmq(JTableGen tablesGenner) {
-        tablesGen = tablesGenner;
+    public MARmq(DocUtil util) {
+        docUtil = util;
     }
     
     public void updateProjectPath(String path) {
         projectPath = path;
+        docUtil.setProjectPath(path);
     }
     
     private static ActiveMQConnectionFactory getConnectionFactory(){
@@ -286,7 +287,7 @@ public class MARmq {
                     String messageText = "GET";
                     //рассылка GET сообщений всем клиентам с запросом колонок
                     for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
-                        String messageId = marDatabase.getMessageIdBySchemeName(entryChoosed.getKey());
+                        String messageId = marDatabase.getAttributeBySchemeName("message_id", entryChoosed.getKey());
                         
                         TextMessage getMessage = session.createTextMessage();
                         getMessage.setText(messageText);
@@ -320,6 +321,10 @@ public class MARmq {
         return marDatabase.messageIdContains(id);
     }
     
+    public String getAttributeFromDatabase(String attribute, String schemeName) {
+        return marDatabase.getAttributeBySchemeName(attribute, schemeName);
+    }
+    
     public void schemeMessageReceived(String xsdDir, String fileName) {
         HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
 
@@ -329,12 +334,16 @@ public class MARmq {
 
         dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
         try {
-            tablesGen.createTablesFromXsd(dirsAndTheirFiles);
+            docUtil.createTablesFromXsd(dirsAndTheirFiles);
         } catch (ParsingException ex) {
             logger.error(ex);
         } catch (IOException ex) {
             logger.error(ex);
         }
+    }
+    
+    public void createXmlData(String fileName, String[] columns) {
+        docUtil.createSerializableXmlData(fileName, columns);
     }
     
     public void closeConnection() {

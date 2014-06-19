@@ -25,7 +25,7 @@ import java.util.prefs.BackingStoreException;
 import com.marati.marbuilder.FoldersWatcher;
 import com.marati.marbuilder.SummaryTable;
 import gen.ParseException;
-import gen.JTableGen;
+import gen.DocUtil;
 
 /**
  *
@@ -46,7 +46,7 @@ public class MarForm extends JFrame
     private final JMenuItem deleteColumnItem;
     private final JMenuItem addRowItem;
     private final FoldersWatcher foldersWatcher;
-    private final JTableGen tablesGenner;
+    private final DocUtil tablesGenner;
     
     private static final String LOCATION = "location";
     private static final String MESSAGE_IDS = "message_ids";
@@ -129,7 +129,7 @@ public class MarForm extends JFrame
         
         String locationPath = locationLabel.getText();
         
-        tablesGenner = new JTableGen(this);
+        tablesGenner = new DocUtil(this);
         
         foldersWatcher = new FoldersWatcher(tablesGenner);
         foldersWatcher.checkWorkingDir(locationPath);
