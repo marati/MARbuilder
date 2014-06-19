@@ -195,6 +195,8 @@ public class MARmq {
     
     public void activateReceiver() {
         if (Connected()) {
+            
+            //создание Listener'a у mainTopic'а
             mainDestination = getDestinationTopic(xsdTopic);
             
             if (mainDestination != null) {
@@ -204,8 +206,22 @@ public class MARmq {
                     ActiveMQTopic topic = (ActiveMQTopic)mainDestination;
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic,
-                            "subFromPath("+projectPath+")");
+                            "mainSubFromPath("+projectPath+")");
                     consumer.setMessageListener(new XsdTopicListener(this, projectPath));
+                } catch (JMSException ex) {
+                    logger.error(ex);
+                }
+            }
+            
+            //создание Listener'a у serviceTopic'а
+            Destination serviceDestination = getDestinationTopic(serviceTopic);
+            if (serviceDestination != null) {
+                try {
+                    ActiveMQTopic topic = (ActiveMQTopic)serviceDestination;
+                    MessageConsumer consumer = session.createDurableSubscriber(
+                            topic,
+                            "serviceSubFromPath("+projectPath+")");
+                    consumer.setMessageListener(new ServiceTopicListener(this, projectPath));
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -281,6 +297,8 @@ public class MARmq {
                         
                         getMessage.setStringProperty("scheme", entryChoosed.getKey());
                         getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
+                        
+                        producer.send(getMessage);
                         
                         System.out.print("["+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());

@@ -83,7 +83,7 @@ public class MARmqDatabase {
     public void saveMapping(String messageId, String ip, String schemeName, String fileName) {
         try {
             String insertQuery = 
-                    "INSERT INTO scheme_mapping (ip, scheme_name, file_name)" +
+                    "INSERT INTO scheme_mapping (message_id, ip, scheme_name, file_name)" +
                     "VALUES (?, ?, ?, ?)";
             
             PreparedStatement ps = sqliteCon.prepareStatement(insertQuery);
