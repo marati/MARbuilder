@@ -29,6 +29,7 @@ public class MARmqDatabase {
             String createQuery = 
                     "CREATE TABLE scheme_mapping (" +
                     "id integer primary key autoincrement not null," +
+                    "message_id text not null," +
                     "ip text not null," +
                     "scheme_name text not null," +
                     "file_name text not null)";
@@ -57,20 +58,43 @@ public class MARmqDatabase {
         }  
     }
     
-    public void saveMapping(String ip, String schemeName, String fileName) {
+    public String getMessageIdBySchemeName(String schemeName) {
+        String messageId = null;
+        
+        try {
+            String selectIpQuery = "SELECT message_id FROM scheme_mapping WHERE scheme_name = (?)";
+            
+            PreparedStatement ps = sqliteCon.prepareStatement(selectIpQuery);
+            ps.setString(1, schemeName);
+            
+            ResultSet rs = ps.executeQuery();
+            while ( rs.next() ) {
+                messageId = rs.getString("message_id");
+            }
+            
+            ps.close();
+        } catch (SQLException ex) {
+            logger.info(ex);
+        }  
+        
+        return messageId;
+    }
+    
+    public void saveMapping(String messageId, String ip, String schemeName, String fileName) {
         try {
             String insertQuery = 
                     "INSERT INTO scheme_mapping (ip, scheme_name, file_name)" +
-                    "VALUES (?, ?, ?)";
+                    "VALUES (?, ?, ?, ?)";
             
             PreparedStatement ps = sqliteCon.prepareStatement(insertQuery);
-            ps.setString(1, ip);
-            ps.setString(2, schemeName);
-            ps.setString(3, fileName);
+            ps.setString(1, messageId);
+            ps.setString(2, ip);
+            ps.setString(3, schemeName);
+            ps.setString(4, fileName);
             ps.executeUpdate();
             
-            String loggerInfo = String.format("insert into scheme_mapping [%s, %s, %s]",
-                                              ip, schemeName, fileName);
+            String loggerInfo = String.format("insert into scheme_mapping [%s, %s, %s, %s]",
+                                              messageId, ip, schemeName, fileName);
             logger.info(loggerInfo);
             ps.close();
         } catch (SQLException ex) {

@@ -11,13 +11,13 @@ import org.apache.log4j.Logger;
  *
  * @author Марат
  */
-public class MessageQueueListener implements MessageListener {
+public class XsdTopicListener implements MessageListener {
 
     private MARmq messageQueue;
     private String projectPath;
-    private static Logger logger = Logger.getLogger(MessageQueueListener.class);
+    private static Logger logger = Logger.getLogger(XsdTopicListener.class);
 
-    public MessageQueueListener(MARmq mq, String projPath) {
+    public XsdTopicListener(MARmq mq, String projPath) {
         messageQueue = mq;
         projectPath = projPath;
     }
@@ -33,16 +33,17 @@ public class MessageQueueListener implements MessageListener {
             logger.info("receive message: [IP " + ip + "], " +
                         "[scheme name " + schemeName + "], " +
                         "[file name " + fileName + "], " +
-                        "[ID " + msg.getJMSMessageID() + "]");
+                        "[ID " + msg.getJMSMessageID() + "], " +
+                        "[Destination " + msg.getJMSDestination() + "]");
 
-            //своё сообщение не принимаем
+            //mini-hardcode: своё сообщение не принимаем
             if (messageQueue.messageContains(msg.getStringProperty("md5"))) {
                 System.out.println("своё сообщение пришло" + msg.getStringProperty("md5"));
                 return;
             }
 
             //сохраняем записаь о пришедшем сообщении в БД
-            messageQueue.saveMapping(ip, schemeName, fileName);
+            messageQueue.saveMapping(msg.getJMSMessageID(), ip, schemeName, fileName);
 
             byte[] bytes = new byte[(int)bytesMessage.getBodyLength()];
             bytesMessage.readBytes(bytes);

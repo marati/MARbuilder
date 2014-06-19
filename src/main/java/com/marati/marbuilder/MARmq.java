@@ -30,13 +30,14 @@ public class MARmq {
     private static ActiveMQConnectionFactory connectionFactory = null;
     private static Connection connection = null; 
     private static Session session;
-    private static Destination destination; 
+    private static Destination mainDestination; 
     private static Logger logger = Logger.getLogger(MARmq.class);
     private final MARmqDatabase marDatabase = new MARmqDatabase();
     
-    private final static String mainTopic = "MARtopic";
-    private final JTableGen tablesGen;
+    private final static String xsdTopic = "XsdTopic";
+    private final static String serviceTopic = "ServiceTopic";
     private static String projectPath = null;
+    private final JTableGen tablesGen;
     
     public MARmq(JTableGen tablesGenner) {
         tablesGen = tablesGenner;
@@ -128,11 +129,11 @@ public class MARmq {
     
     public void sendFile(String filePath, String rootElementName) throws IOException {
         if (Connected()) {
-            destination = getDestinationTopic(mainTopic);
+            mainDestination = getDestinationTopic(xsdTopic);
             
-            if (destination != null) {
+            if (mainDestination != null) {
                 try {
-                    MessageProducer producer = session.createProducer(destination);
+                    MessageProducer producer = session.createProducer(mainDestination);
                     producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                     
                     File fileToSending = new File(filePath);
@@ -192,23 +193,19 @@ public class MARmq {
         }
     }
     
-//    public void receiveOldMessages() {
-//        
-//    }
-    
     public void activateReceiver() {
         if (Connected()) {
-            destination = getDestinationTopic(mainTopic);
+            mainDestination = getDestinationTopic(xsdTopic);
             
-            if (destination != null) {
+            if (mainDestination != null) {
                 try {
                     //MessageConsumer consumer = session.createConsumer(destination);
                     //consumer.setMessageListener(new Listener());
-                    ActiveMQTopic topic = (ActiveMQTopic)destination;
+                    ActiveMQTopic topic = (ActiveMQTopic)mainDestination;
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic,
                             "subFromPath("+projectPath+")");
-                    consumer.setMessageListener(new MessageQueueListener(this, projectPath));
+                    consumer.setMessageListener(new XsdTopicListener(this, projectPath));
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -262,11 +259,27 @@ public class MARmq {
         if (Connected()) {
             try {
                 String topicName = reportName + "_From_" + connection.getClientID();
-                //destination = getDestinationTopic(topicName);
+                Destination currentTopicDestionation = getDestinationTopic(topicName);
                 
-                if (destination != null) {
-                    //тут посылка сообщения GET другому
+                mainDestination = getDestinationTopic(xsdTopic);
+                
+                if (mainDestination != null) {
+                    MessageProducer producer = session.createProducer(mainDestination);
+                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
+                    
+                    String messageText = "GET";
+                    //рассылка GET сообщений всем клиентам с запросом колонок
                     for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
+                        String messageId = marDatabase.getMessageIdBySchemeName(entryChoosed.getKey());
+                        
+                        TextMessage newGetMessage = session.createTextMessage();
+                        newGetMessage.setText(messageText);
+                        newGetMessage.setJMSCorrelationID(messageId);
+                        newGetMessage.setJMSReplyTo(currentTopicDestionation);
+                        
+                        newGetMessage.setStringProperty("scheme", entryChoosed.getKey());
+                        newGetMessage.setStringProperty("columns", entryChoosed.getValue().toString());
+                        
                         System.out.print("["+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());
                     }
@@ -280,8 +293,8 @@ public class MARmq {
         }
     }
     
-    public void saveMapping(String ip, String schemeName, String fileName) {
-        marDatabase.saveMapping(ip, schemeName, fileName);
+    public void saveMapping(String messageId, String ip, String schemeName, String fileName) {
+        marDatabase.saveMapping(messageId, ip, schemeName, fileName);
     }
     
     public Boolean messageContains(String id) {
