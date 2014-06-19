@@ -104,7 +104,8 @@ public class DocUtil {
             String fileNameWithoutExt = fileName.substring(0, dotPos);
             String xmlFileName = fileNameWithoutExt + ".xml";
             
-            File xmlFile = new File(projectPath + File.separator + xmlFileName);
+            File xmlFile = new File(projectPath + File.separator + 
+                    "xml" + File.separator + xmlFileName);
             
             Builder parser = new Builder();
             Document doc = parser.build(xmlFile);
