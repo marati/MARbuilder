@@ -56,7 +56,7 @@ public class ServiceTopicListener implements MessageListener {
                         messageQueue.createXmlData(fileName, columnsStr);
                 
                 
-                Destination reportDestionation = msg.getJMSDestination();
+                Destination reportDestionation = msg.getJMSReplyTo();
                 
                 if (reportDestionation != null) {
                     MessageProducer producer = messageQueue.getSession().createProducer(reportDestionation);
