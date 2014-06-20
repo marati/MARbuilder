@@ -21,7 +21,7 @@ public class ReportTopicListener implements MessageListener {
     }
     
     public void onMessage(Message msg) {
-        MapMessage mapMessage = (MapMessage)msg;
+        TextMessage mapMessage = (TextMessage)msg;
         
         try {
             String ip = msg.getStringProperty("ip");
@@ -40,11 +40,13 @@ public class ReportTopicListener implements MessageListener {
             
             String schemaName = msg.getStringProperty("scheme");
             String columnName = msg.getStringProperty("column");
-            String columns = mapMessage.getString(columnName);
+            String values = msg.getStringProperty("values");
+            //String columns = mapMessage.getString(columnName);
             
             logger.info("receive MapMessage");
             logger.info("scheme property: " + schemaName);
-            logger.info("columns: " + columns);
+            logger.info("column name: " + columnName);
+            logger.info("values: " + values);
             
         } catch (JMSException ex) {
             logger.error(ex);

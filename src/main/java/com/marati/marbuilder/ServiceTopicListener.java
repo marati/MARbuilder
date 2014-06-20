@@ -57,24 +57,28 @@ public class ServiceTopicListener implements MessageListener {
                 
                 
                 Destination reportDestionation = msg.getJMSReplyTo();
+                logger.info("destination sender: " + msg.getJMSReplyTo().toString());
                 
                 if (reportDestionation != null) {
                     MessageProducer producer = messageQueue.getSession().createProducer(reportDestionation);
                     producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                     
-                    //String messageText = "SEND";
+                    String messageText = "SEND";
                     
                     for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
-                        MapMessage sendMessage = messageQueue.getSession().createMapMessage();
+                        TextMessage sendMessage = messageQueue.getSession().createTextMessage();
                         sendMessage.setJMSCorrelationID(messageId);
                         
                         String columnName = entryData.getKey();
                         String columnValues = entryData.getValue().toString();
-                        sendMessage.setString(columnName, columnValues);
+                        //sendMessage.setString(columnName, columnValues);
                         
-                        sendMessage.setStringProperty("schema", schemaName);
+                        sendMessage.setStringProperty("scheme", schemaName);
                         sendMessage.setStringProperty("column", columnName);
                         sendMessage.setStringProperty("ip", myIpAddr);
+                        sendMessage.setStringProperty("values", columnValues);
+                        
+                        sendMessage.setText(messageText);
                         
                         logger.info("preparation to send data [tableColumn: " + columnName + "]");
                         
