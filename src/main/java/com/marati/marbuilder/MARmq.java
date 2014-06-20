@@ -78,6 +78,69 @@ public class MARmq {
         }
     }
     
+    public static Session getSession() {
+        return session;
+    }
+    
+    public void activateReceiver() {
+        if (Connected()) {
+            
+            //создание Listener'a у mainTopic'а
+            mainDestination = getDestinationTopic(xsdTopic);
+            
+            if (mainDestination != null) {
+                try {
+                    //MessageConsumer consumer = session.createConsumer(destination);
+                    //consumer.setMessageListener(new Listener());
+                    ActiveMQTopic topic = (ActiveMQTopic)mainDestination;
+                    MessageConsumer consumer = session.createDurableSubscriber(
+                            topic,
+                            "mainSubFromPath("+projectPath+")");
+                    consumer.setMessageListener(new XsdTopicListener(this, projectPath));
+                } catch (JMSException ex) {
+                    logger.error(ex);
+                }
+            }
+            
+            //создание Listener'a у serviceTopic'а
+            Destination serviceDestination = getDestinationTopic(serviceTopic);
+            if (serviceDestination != null) {
+                try {
+                    ActiveMQTopic topic = (ActiveMQTopic)serviceDestination;
+                    MessageConsumer consumer = session.createDurableSubscriber(
+                            topic,
+                            "serviceSubFromPath("+projectPath+")");
+                    consumer.setMessageListener(new ServiceTopicListener(this, projectPath));
+                } catch (JMSException ex) {
+                    logger.error(ex);
+                }
+            }
+        } else {
+            logger.info("Соединение закрыто");
+        }
+    }
+    
+    public void subscribeToTopic(String topicName) {
+        if (Connected()) {
+            Destination topicDestination = getDestinationTopic(topicName);
+            if (topicDestination != null) {
+                try {
+                    ActiveMQTopic topic = (ActiveMQTopic)topicDestination;
+                    String nameSubscriber = topicName + "SubFromPath("+projectPath+")";
+                    
+                    MessageConsumer consumer = session.createDurableSubscriber(
+                            topic, nameSubscriber);
+                    consumer.setMessageListener(new ReportTopicListener(this, projectPath));
+                    
+                    logger.info("subscribe to topic: " + topicName);
+                    logger.info("subscriber: " + nameSubscriber);
+                } catch (JMSException ex) {
+                    logger.error(ex);
+                }
+            }
+        }
+    }
+    
     private static Destination getDestinationTopic(String topicName) {
         try {
             return session.createTopic(topicName);
@@ -87,7 +150,7 @@ public class MARmq {
         }
     }
     
-    private static String getIp() {
+    public static String getIp() {
         String ipv4 = null;
         Enumeration<NetworkInterface> nets;
         
@@ -148,9 +211,12 @@ public class MARmq {
                     BytesMessage bytesMessage = session.createBytesMessage();
                     
                     //write ip & filename properties
-                    bytesMessage.setStringProperty("ip", getIp());
+                    String ip = getIp();
+                    bytesMessage.setStringProperty("ip", ip);
                     bytesMessage.setStringProperty("scheme_name", rootElementName);
                     bytesMessage.setStringProperty("filename", fileToSending.getName());
+                    
+                    this.saveMapping("NOT_RECEIVE", ip, rootElementName, fileToSending.getName());
                     
                     byte[] bytes = new byte[(int)length];
                     int offset = 0;
@@ -185,44 +251,6 @@ public class MARmq {
                     is.close();
                     
                     producer.send(bytesMessage);
-                } catch (JMSException ex) {
-                    logger.error(ex);
-                }
-            }
-        } else {
-            logger.info("Соединение закрыто");
-        }
-    }
-    
-    public void activateReceiver() {
-        if (Connected()) {
-            
-            //создание Listener'a у mainTopic'а
-            mainDestination = getDestinationTopic(xsdTopic);
-            
-            if (mainDestination != null) {
-                try {
-                    //MessageConsumer consumer = session.createConsumer(destination);
-                    //consumer.setMessageListener(new Listener());
-                    ActiveMQTopic topic = (ActiveMQTopic)mainDestination;
-                    MessageConsumer consumer = session.createDurableSubscriber(
-                            topic,
-                            "mainSubFromPath("+projectPath+")");
-                    consumer.setMessageListener(new XsdTopicListener(this, projectPath));
-                } catch (JMSException ex) {
-                    logger.error(ex);
-                }
-            }
-            
-            //создание Listener'a у serviceTopic'а
-            Destination serviceDestination = getDestinationTopic(serviceTopic);
-            if (serviceDestination != null) {
-                try {
-                    ActiveMQTopic topic = (ActiveMQTopic)serviceDestination;
-                    MessageConsumer consumer = session.createDurableSubscriber(
-                            topic,
-                            "serviceSubFromPath("+projectPath+")");
-                    consumer.setMessageListener(new ServiceTopicListener(this, projectPath));
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -303,6 +331,8 @@ public class MARmq {
                         
                         System.out.print("["+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());
+                        
+                        subscribeToTopic(topicName);
                     }
                     
                 }
@@ -342,8 +372,8 @@ public class MARmq {
         }
     }
     
-    public void createXmlData(String fileName, String[] columns) {
-        docUtil.createSerializableXmlData(fileName, columns);
+    public Map<String, ArrayList<String>> createXmlData(String fileName, String strColumns) {
+        return docUtil.createSerializableXmlData(fileName, strColumns);
     }
     
     public void closeConnection() {

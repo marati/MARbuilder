@@ -9,9 +9,10 @@ import nu.xom.Document;
 import nu.xom.Builder;
 import nu.xom.Element;
 import nu.xom.Elements;
-import javax.xml.xpath.*;
+import nu.xom.Nodes;
+//import javax.xml.xpath.*;
 import org.apache.log4j.Logger;
-import org.w3c.dom.NodeList;
+//import org.w3c.dom.NodeList;
 
 import com.marati.marbuilder.MarForm;
 import java.util.logging.Level;
@@ -98,8 +99,11 @@ public class DocUtil {
         marForm.addTabsInPane(tables);
     }
     
-    public void createSerializableXmlData(String fileName, String[] columns) {
+    public Map<String, ArrayList<String>> createSerializableXmlData(String fileName, String strColumns) {
+        Map<String, ArrayList<String>> dataFromXml = new TreeMap<String, ArrayList<String>>();
+        
         try {
+            logger.info("create with file: " + fileName + " columns : " + strColumns);
             int dotPos = fileName.lastIndexOf(".");
             String fileNameWithoutExt = fileName.substring(0, dotPos);
             String xmlFileName = fileNameWithoutExt + ".xml";
@@ -110,22 +114,23 @@ public class DocUtil {
             Builder parser = new Builder();
             Document doc = parser.build(xmlFile);
             
-            XPathFactory factory = XPathFactory.newInstance();
-            XPath xpath = factory.newXPath();
-            XPathExpression expr = xpath.compile("//title/price/text()");
-            
-            Object result = expr.evaluate(doc, XPathConstants.NODESET);
-            NodeList nodes = (NodeList) result;
-            for (int i = 0; i < nodes.getLength(); i++) {
-                logger.info("node in xml req file: " + nodes.item(i).getNodeValue()); 
+            String[] columns = strColumns.split("\\,");
+            for (String column : columns) {
+                ArrayList<String> valuesFromColumn = new ArrayList<String>();
+                Nodes nodes = doc.query(".//text()//parent::" + column);
+                for (int i = 0; i < nodes.size(); i++) {
+                    valuesFromColumn.add(nodes.get(i).getValue());
+                }
+                
+                dataFromXml.put(column, valuesFromColumn);
             }
-            
+
         } catch (ParsingException ex) {
             logger.error(ex);
         } catch (IOException ex) {
             logger.error(ex);
-        } catch (XPathExpressionException ex) {
-            logger.error(ex);
         }
+        
+        return dataFromXml;
     }
 }
