@@ -5,6 +5,8 @@ import java.util.*;
 import javax.jms.*;
 import nu.xom.ParsingException;
 import org.apache.log4j.Logger;
+
+import gen.DocUtil;
 /**
  *
  * @author Марат
@@ -12,12 +14,21 @@ import org.apache.log4j.Logger;
 public class ReportTopicListener implements MessageListener {
     private MARmq messageQueue;
     private String projectPath;
+    private TreeMap<String, ArrayList<String>> expectedColumns;
+    private Boolean arrivalSign = false;
+    private String addingRow = null;
+    //private DocUtil docUtil;
     private final static String topicName = null;
     private final static Logger logger = Logger.getLogger(ServiceTopicListener.class);
 
     public ReportTopicListener(MARmq mq, String projPath) {
         messageQueue = mq;
         projectPath = projPath;
+        //docUtil = messageQueue.getDocUtil();
+    }
+    
+    public void expectedColumns(TreeMap<String, ArrayList<String>> excected) {
+        expectedColumns = excected;
     }
     
     public void onMessage(Message msg) {
@@ -47,6 +58,27 @@ public class ReportTopicListener implements MessageListener {
             logger.info("scheme property: " + schemaName);
             logger.info("column name: " + columnName);
             logger.info("values: " + values);
+            
+            ArrayList<String> tepmValues = expectedColumns.get(columnName);
+
+            String[] valuesArray = values.split("\\,");
+            for (String value: valuesArray)
+                tepmValues.add(value);
+
+            
+            Boolean arrivalSign = false;
+            for (Map.Entry<String, ArrayList<String>> entryExpected: expectedColumns.entrySet()) {
+                if (entryExpected.getValue().isEmpty()) {
+                    arrivalSign = false;
+                    break;
+                }
+                else
+                    arrivalSign = true;
+
+            }
+            
+            //if (arrivalSign)
+                //вызов add row expectedColumns
             
         } catch (JMSException ex) {
             logger.error(ex);

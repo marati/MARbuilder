@@ -43,6 +43,10 @@ public class MARmq {
         docUtil = util;
     }
     
+    public DocUtil getDocUtil() {
+        return docUtil;
+    }
+    
     public void updateProjectPath(String path) {
         projectPath = path;
         docUtil.setProjectPath(path);
@@ -329,7 +333,7 @@ public class MARmq {
                         
                         producer.send(getMessage);
                         
-                        System.out.print("["+entryChoosed.getKey()+"] =>");
+                        System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());
                         
                         subscribeToTopic(topicName);
