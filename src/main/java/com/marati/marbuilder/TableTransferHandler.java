@@ -37,7 +37,7 @@ public class TableTransferHandler extends TransferHandler {
             model.addColumn(values[i]);
             
             //last added id - model.getColumnCount()-1
-            model.setMapiingSchema(tableName, values[i]);
+            model.setMappingScheme(tableName, values[i], model.getColumnCount()-1);
             
             if (descriptionEnabled) {
                 //remove description column (index = 0)

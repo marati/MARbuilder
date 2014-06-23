@@ -133,4 +133,8 @@ public class DocUtil {
         
         return dataFromXml;
     }
+    
+    public void addRowsInSummaryTable(TreeMap<String, ArrayList<String>> columnsAndRows) {
+        marForm.addRowsInSummaryTable(columnsAndRows);
+    }
 }

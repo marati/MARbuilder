@@ -17,22 +17,22 @@ public class ReportTopicListener implements MessageListener {
     private TreeMap<String, ArrayList<String>> expectedColumns;
     private Boolean arrivalSign = false;
     private String addingRow = null;
-    //private DocUtil docUtil;
+    private DocUtil docUtil;
     private final static String topicName = null;
     private final static Logger logger = Logger.getLogger(ServiceTopicListener.class);
 
     public ReportTopicListener(MARmq mq, String projPath) {
         messageQueue = mq;
         projectPath = projPath;
-        //docUtil = messageQueue.getDocUtil();
+        docUtil = messageQueue.getDocUtil();
     }
     
-    public void expectedColumns(TreeMap<String, ArrayList<String>> excected) {
+    public void setExpectedColumns(TreeMap<String, ArrayList<String>> excected) {
         expectedColumns = excected;
     }
     
     public void onMessage(Message msg) {
-        TextMessage mapMessage = (TextMessage)msg;
+        TextMessage textMessage = (TextMessage)msg;
         
         try {
             String ip = msg.getStringProperty("ip");
@@ -45,8 +45,12 @@ public class ReportTopicListener implements MessageListener {
             String myIpAddr = messageQueue.getIp();
             //если совпадают, то отколняем сооющение; своего не надо
             if (myIpAddr.equals(ip)) {
-                logger.info("receive my message: IP sender = IP receiver [" + myIpAddr + "]");
+                logger.info("receive my message: IP sender = IP receiver [" +
+                        ip + " = " + myIpAddr + "]");
                 return;
+            } else {
+                logger.info("receive message: IP sender != IP receiver [" +
+                        ip + " != " + myIpAddr + "]");
             }
             
             String schemaName = msg.getStringProperty("scheme");
@@ -60,6 +64,8 @@ public class ReportTopicListener implements MessageListener {
             logger.info("values: " + values);
             
             ArrayList<String> tepmValues = expectedColumns.get(columnName);
+            
+            logger.info("adding values in column: " + columnName);
 
             String[] valuesArray = values.split("\\,");
             for (String value: valuesArray)
@@ -77,8 +83,8 @@ public class ReportTopicListener implements MessageListener {
 
             }
             
-            //if (arrivalSign)
-                //вызов add row expectedColumns
+            if (arrivalSign)
+                docUtil.addRowsInSummaryTable(expectedColumns);
             
         } catch (JMSException ex) {
             logger.error(ex);

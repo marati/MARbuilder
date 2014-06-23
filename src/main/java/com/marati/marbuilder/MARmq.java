@@ -31,6 +31,8 @@ public class MARmq {
     private static Connection connection = null; 
     private static Session session;
     private static Destination mainDestination; 
+    private ReportTopicListener reportListener = null;
+    
     private static Logger logger = Logger.getLogger(MARmq.class);
     private final MARmqDatabase marDatabase = new MARmqDatabase();
     
@@ -134,7 +136,8 @@ public class MARmq {
                     
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic, nameSubscriber);
-                    consumer.setMessageListener(new ReportTopicListener(this, projectPath));
+                    reportListener = new ReportTopicListener(this, projectPath);
+                    consumer.setMessageListener(reportListener);
                     
                     logger.info("subscribe to topic: " + topicName);
                     logger.info("subscriber: " + nameSubscriber);
@@ -316,6 +319,8 @@ public class MARmq {
                     MessageProducer producer = session.createProducer(serviceDestination);
                     producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                     
+                    TreeMap<String, ArrayList<String>> columnsAndEmptyValues = new TreeMap<String, ArrayList<String>>();
+                    
                     String messageText = "GET";
                     //рассылка GET сообщений всем клиентам с запросом колонок
                     for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
@@ -333,11 +338,17 @@ public class MARmq {
                         
                         producer.send(getMessage);
                         
+                        ArrayList<String> tempColumns = entryChoosed.getValue();
+                        for (String columnName : tempColumns)
+                            columnsAndEmptyValues.put(columnName, new ArrayList<String>());
+                        
                         System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());
                         
                         subscribeToTopic(topicName);
                     }
+                    
+                    reportListener.setExpectedColumns(columnsAndEmptyValues);
                     
                 }
             } catch (JMSException ex) {

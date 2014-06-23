@@ -15,15 +15,15 @@ import java.awt.event.WindowAdapter;
 import java.awt.datatransfer.*;
 
 import javax.swing.*;
-import javax.swing.table.*;
+//import javax.swing.table.*;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.prefs.BackingStoreException;
+//import java.util.prefs.BackingStoreException;
 
 //my
-import com.marati.marbuilder.FoldersWatcher;
-import com.marati.marbuilder.SummaryTable;
+//import com.marati.marbuilder.FoldersWatcher;
+//import com.marati.marbuilder.SummaryTable;
 import gen.ParseException;
 import gen.DocUtil;
 
@@ -230,7 +230,8 @@ public class MarForm extends JFrame
             columnsList.setTransferHandler(new ListTransferHandler());
             
             structureTables.add(tabbedPane, tableName);
-            structureTables.repaint();
+            //не работает
+            /*structureTables.repaint();
             structureTables.validate();
             
             
@@ -241,31 +242,28 @@ public class MarForm extends JFrame
             summaryTable.revalidate();
             
             mainPanel.repaint();
-            mainPanel.revalidate();
+            mainPanel.revalidate();*/
             
             
         }
     }
     
-}
-
-class HeaderRenderer extends DefaultTableCellRenderer {
+    public void addRowsInSummaryTable(/*String tableName,*/ TreeMap<String, ArrayList<String>> columnsAndRows) {
+        //String tempValues = null;
+        MARDefaultTableModel marModel =  (MARDefaultTableModel)summaryTable.getModel();
+        
+        for (Map.Entry<String, ArrayList<String>> entryData: columnsAndRows.entrySet()) {
+            int columnIndex = marModel.getIndexByColumnName(entryData.getKey());
+            int rowIndex = 0;
+            
+            ArrayList<String> tempRows = entryData.getValue();
+            for (String row : tempRows) {
+                marModel.setValueAt(row, rowIndex, columnIndex);
+                ++rowIndex;
+            }
+        }        
+    }
     
-	// возвращает компонент для прорисовки
-	public Component getTableCellRendererComponent(
-		JTable table, Object value, boolean isSelected,
-			boolean hasFocus, int row, int column) 
-	{
-		JLabel label =
-			(JLabel) super.getTableCellRendererComponent(
-			 	table, value, isSelected, hasFocus,
-					row, column);
-		label.setBackground(Color.lightGray);
-		label.setBorder(BorderFactory.createLineBorder(java.awt.Color.gray));
-		label.setFont(new java.awt.Font("Dialog", java.awt.Font.BOLD, 15));
-		label.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-		return label;
-	}
 }
 
 class ListTransferHandler extends TransferHandler {

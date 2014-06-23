@@ -1,13 +1,18 @@
 package com.marati.marbuilder;
 
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 
@@ -19,13 +24,15 @@ import javax.swing.table.TableColumn;
 class MARDefaultTableModel extends DefaultTableModel {
     
     private Map<String, ArrayList<String>> mappingWithSchemes = new HashMap<String, ArrayList<String>>();
+    private Map<String, Integer> mappingColumnsAndIds = new HashMap<String, Integer>();
     
     public Vector getColumnIdentifiers() {
         return columnIdentifiers;
     }
     
-    public void setMapiingSchema(String schemeName, String columnName) {
+    public void setMappingScheme(String schemeName, String columnName, int index) {
         if (mappingWithSchemes.containsKey(schemeName)) {
+            //refact: mappingWithSchemes.get, убрать массив
             for (Map.Entry<String, ArrayList<String>> entrySchemas: mappingWithSchemes.entrySet()) {
                 if (schemeName.equals(entrySchemas.getKey())) {
                     ArrayList<String> columns = entrySchemas.getValue();
@@ -40,6 +47,10 @@ class MARDefaultTableModel extends DefaultTableModel {
             
             mappingWithSchemes.put(schemeName, columns);
         }
+        
+        if (!mappingColumnsAndIds.containsKey(columnName)) {
+            mappingColumnsAndIds.put(columnName, index);
+        }
     }
     
     /*public String getSchemeNameByIndex(int indexColumn) {
@@ -52,6 +63,30 @@ class MARDefaultTableModel extends DefaultTableModel {
     public Map<String, ArrayList<String>> getChoosedColumns() {
         return mappingWithSchemes;
     }
+    
+    // Map<String, ArrayList<String>> : String - columnName, int - index
+    public int getIndexByColumnName(String columnName) {
+        return mappingColumnsAndIds.get(columnName);
+    }
+}
+
+class HeaderRenderer extends DefaultTableCellRenderer {
+    
+	// возвращает компонент для прорисовки
+	public Component getTableCellRendererComponent(
+		JTable table, Object value, boolean isSelected,
+			boolean hasFocus, int row, int column) 
+	{
+		JLabel label =
+			(JLabel) super.getTableCellRendererComponent(
+			 	table, value, isSelected, hasFocus,
+					row, column);
+		label.setBackground(Color.lightGray);
+		label.setBorder(BorderFactory.createLineBorder(java.awt.Color.gray));
+		label.setFont(new java.awt.Font("Dialog", java.awt.Font.BOLD, 15));
+		label.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+		return label;
+	}
 }
 
 public class SummaryTable extends JTable {
