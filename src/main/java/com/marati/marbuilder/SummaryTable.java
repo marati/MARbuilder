@@ -49,6 +49,7 @@ class MARDefaultTableModel extends DefaultTableModel {
         }
         
         if (!mappingColumnsAndIds.containsKey(columnName)) {
+            System.out.println("set mapping: column" + columnName + ", index " + index);
             mappingColumnsAndIds.put(columnName, index);
         }
     }

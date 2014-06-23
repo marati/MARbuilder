@@ -58,7 +58,7 @@ public class MARmqDatabase {
         }  
     }
     
-    public String getAttributeBySchemeName(String attribute, String schemeName) {
+    public static String getAttributeBySchemeName(String attribute, String schemeName) {
         String returnAttribute = null;
         
         try {
@@ -80,7 +80,7 @@ public class MARmqDatabase {
         return returnAttribute;
     }
     
-    public void saveMapping(String messageId, String ip, String schemeName, String fileName) {
+    public static void saveMapping(String messageId, String ip, String schemeName, String fileName) {
         try {
             String insertQuery = 
                     "INSERT INTO scheme_mapping (message_id, ip, scheme_name, file_name)" +

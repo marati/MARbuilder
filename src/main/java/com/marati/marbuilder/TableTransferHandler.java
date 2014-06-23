@@ -36,14 +36,14 @@ public class TableTransferHandler extends TransferHandler {
         for (int i = 0; i < values.length; i++) {
             model.addColumn(values[i]);
             
-            //last added id - model.getColumnCount()-1
-            model.setMappingScheme(tableName, values[i], model.getColumnCount()-1);
-            
             if (descriptionEnabled) {
                 //remove description column (index = 0)
                 target.removeColumnAndData(0);
                 descriptionEnabled = false;
             }
+            
+            //last added id - model.getColumnCount()-1
+            model.setMappingScheme(tableName, values[i], model.getColumnCount()-1);
         }
 
     }

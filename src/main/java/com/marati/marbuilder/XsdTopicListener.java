@@ -43,7 +43,7 @@ public class XsdTopicListener implements MessageListener {
             }
 
             //сохраняем записаь о пришедшем сообщении в БД
-            messageQueue.saveMapping(msg.getJMSMessageID(), ip, schemeName, fileName);
+            MARmqDatabase.saveMapping(msg.getJMSMessageID(), ip, schemeName, fileName);
 
             byte[] bytes = new byte[(int)bytesMessage.getBodyLength()];
             bytesMessage.readBytes(bytes);

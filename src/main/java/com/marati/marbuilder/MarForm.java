@@ -17,13 +17,9 @@ import java.awt.datatransfer.*;
 import javax.swing.*;
 //import javax.swing.table.*;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-//import java.util.prefs.BackingStoreException;
+import org.apache.log4j.Logger;
 
 //my
-//import com.marati.marbuilder.FoldersWatcher;
-//import com.marati.marbuilder.SummaryTable;
 import gen.ParseException;
 import gen.DocUtil;
 
@@ -47,6 +43,7 @@ public class MarForm extends JFrame
     private final JMenuItem addRowItem;
     private final FoldersWatcher foldersWatcher;
     private final DocUtil tablesGenner;
+    private final static Logger logger = Logger.getLogger(MarForm.class);
     
     private static final String LOCATION = "location";
     private static final String MESSAGE_IDS = "message_ids";
@@ -175,11 +172,11 @@ public class MarForm extends JFrame
                 try {
                     foldersWatcher.checkWorkingDir(locationPath);
                 } catch (ParseException ex) {
-                    Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex);
                 } catch (IOException ex) {
-                    Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex);
                 } catch (ParsingException ex) {
-                    Logger.getLogger(MarForm.class.getName()).log(Level.SEVERE, null, ex);
+                    logger.error(ex);
                 }
             }
             
@@ -230,6 +227,8 @@ public class MarForm extends JFrame
             columnsList.setTransferHandler(new ListTransferHandler());
             
             structureTables.add(tabbedPane, tableName);
+            
+            logger.info(String.format("add new tab (%s) and columns (%s)", tableName, columns.toString()));
             //не работает
             /*structureTables.repaint();
             structureTables.validate();
@@ -243,8 +242,6 @@ public class MarForm extends JFrame
             
             mainPanel.repaint();
             mainPanel.revalidate();*/
-            
-            
         }
     }
     
@@ -257,9 +254,14 @@ public class MarForm extends JFrame
             int rowIndex = 0;
             
             ArrayList<String> tempRows = entryData.getValue();
+            logger.info("adding values: " + tempRows.toString() + " columnIndex: " + columnIndex);
             for (String row : tempRows) {
                 marModel.setValueAt(row, rowIndex, columnIndex);
                 ++rowIndex;
+                
+                int rowCount = marModel.getRowCount();
+                if (rowIndex >= rowCount)
+                    marModel.addRow(new Object[]{"", ""});
             }
         }        
     }

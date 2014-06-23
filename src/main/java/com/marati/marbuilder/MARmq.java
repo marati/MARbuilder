@@ -31,7 +31,6 @@ public class MARmq {
     private static Connection connection = null; 
     private static Session session;
     private static Destination mainDestination; 
-    private ReportTopicListener reportListener = null;
     
     private static Logger logger = Logger.getLogger(MARmq.class);
     private final MARmqDatabase marDatabase = new MARmqDatabase();
@@ -84,8 +83,21 @@ public class MARmq {
         }
     }
     
+   public Connection getConnection() {
+       return connection;
+   }
+    
     public static Session getSession() {
         return session;
+    }
+
+    public static Destination getDestinationTopic(String topicName) {
+        try {
+            return session.createTopic(topicName);
+        } catch (JMSException ex) {
+            logger.error(ex);
+            return null;
+        }
     }
     
     public void activateReceiver() {
@@ -126,7 +138,7 @@ public class MARmq {
         }
     }
     
-    public void subscribeToTopic(String topicName) {
+    public void subscribeToTopic(String topicName, TreeMap<String, ArrayList<String>> expectedColumns) {
         if (Connected()) {
             Destination topicDestination = getDestinationTopic(topicName);
             if (topicDestination != null) {
@@ -136,8 +148,9 @@ public class MARmq {
                     
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic, nameSubscriber);
-                    reportListener = new ReportTopicListener(this, projectPath);
-                    consumer.setMessageListener(reportListener);
+                    consumer.setMessageListener(
+                            new ReportTopicListener(this, projectPath, expectedColumns)
+                    );
                     
                     logger.info("subscribe to topic: " + topicName);
                     logger.info("subscriber: " + nameSubscriber);
@@ -145,15 +158,6 @@ public class MARmq {
                     logger.error(ex);
                 }
             }
-        }
-    }
-    
-    private static Destination getDestinationTopic(String topicName) {
-        try {
-            return session.createTopic(topicName);
-        } catch (JMSException ex) {
-            logger.error(ex);
-            return null;
         }
     }
     
@@ -223,7 +227,7 @@ public class MARmq {
                     bytesMessage.setStringProperty("scheme_name", rootElementName);
                     bytesMessage.setStringProperty("filename", fileToSending.getName());
                     
-                    this.saveMapping("NOT_RECEIVE", ip, rootElementName, fileToSending.getName());
+                    MARmqDatabase.saveMapping("NOT_RECEIVE", ip, rootElementName, fileToSending.getName());
                     
                     byte[] bytes = new byte[(int)length];
                     int offset = 0;
@@ -307,67 +311,22 @@ public class MARmq {
         }
     }*/
     
-    public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
-        if (Connected()) {
-            try {
-                String topicName = reportName + "_From_" + connection.getClientID();
-                Destination currentTopicDestionation = getDestinationTopic(topicName);
-                
-                Destination serviceDestination = getDestinationTopic(serviceTopic);
-                
-                if (serviceDestination != null) {
-                    MessageProducer producer = session.createProducer(serviceDestination);
-                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-                    
-                    TreeMap<String, ArrayList<String>> columnsAndEmptyValues = new TreeMap<String, ArrayList<String>>();
-                    
-                    String messageText = "GET";
-                    //рассылка GET сообщений всем клиентам с запросом колонок
-                    for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
-                        String messageId = marDatabase.getAttributeBySchemeName("message_id", entryChoosed.getKey());
-                        
-                        TextMessage getMessage = session.createTextMessage();
-                        getMessage.setText(messageText);
-                        //ответить на сообщение (ID из БД)
-                        getMessage.setJMSCorrelationID(messageId);
-                        //указание топика, на который должны будут прислать ответ клиенту-инициатору
-                        getMessage.setJMSReplyTo(currentTopicDestionation);
-                        
-                        getMessage.setStringProperty("scheme", entryChoosed.getKey());
-                        getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
-                        
-                        producer.send(getMessage);
-                        
-                        ArrayList<String> tempColumns = entryChoosed.getValue();
-                        for (String columnName : tempColumns)
-                            columnsAndEmptyValues.put(columnName, new ArrayList<String>());
-                        
-                        System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
-                        System.out.println(entryChoosed.getValue().toString());
-                        
-                        subscribeToTopic(topicName);
-                    }
-                    
-                    reportListener.setExpectedColumns(columnsAndEmptyValues);
-                    
-                }
-            } catch (JMSException ex) {
-                logger.error(ex);
-            }
-            
-        }
-    }
+
     
-    public void saveMapping(String messageId, String ip, String schemeName, String fileName) {
+    /*public void saveMapping(String messageId, String ip, String schemeName, String fileName) {
         marDatabase.saveMapping(messageId, ip, schemeName, fileName);
-    }
+    }*/
     
     public Boolean messageContains(String id) {
         return marDatabase.messageIdContains(id);
     }
     
     public String getAttributeFromDatabase(String attribute, String schemeName) {
-        return marDatabase.getAttributeBySchemeName(attribute, schemeName);
+        return MARmqDatabase.getAttributeBySchemeName(attribute, schemeName);
+    }
+    
+    public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
+        BuildReport.buildReport(reportName, choosedColumns);
     }
     
     public void schemeMessageReceived(String xsdDir, String fileName) {

@@ -90,9 +90,6 @@ public class DocUtil {
             for (String fileName : filesNameWithoutExt) {
                 File xsdFile = new File(curentDir + File.separator + fileName + ".xsd");
                 parseXsd(xsdFile);
-                
-                String logMessage = new String("Convert: " + fileName + ".xml to " + xsdFile.getName());
-                logger.info(logMessage);
             }
         }
         

@@ -19,17 +19,19 @@ public class ReportTopicListener implements MessageListener {
     private String addingRow = null;
     private DocUtil docUtil;
     private final static String topicName = null;
-    private final static Logger logger = Logger.getLogger(ServiceTopicListener.class);
+    private final static Logger logger = Logger.getLogger(ReportTopicListener.class);
 
-    public ReportTopicListener(MARmq mq, String projPath) {
+    public ReportTopicListener(MARmq mq, String projPath, TreeMap<String, ArrayList<String>> expected) {
         messageQueue = mq;
-        projectPath = projPath;
         docUtil = messageQueue.getDocUtil();
+        
+        projectPath = projPath;
+        expectedColumns = expected;
     }
     
-    public void setExpectedColumns(TreeMap<String, ArrayList<String>> excected) {
+    /*public void setExpectedColumns(TreeMap<String, ArrayList<String>> excected) {
         expectedColumns = excected;
-    }
+    }*/
     
     public void onMessage(Message msg) {
         TextMessage textMessage = (TextMessage)msg;
@@ -55,18 +57,20 @@ public class ReportTopicListener implements MessageListener {
             
             String schemaName = msg.getStringProperty("scheme");
             String columnName = msg.getStringProperty("column");
-            String values = msg.getStringProperty("values");
+            String rawValues = msg.getStringProperty("values");
             //String columns = mapMessage.getString(columnName);
             
             logger.info("receive MapMessage");
             logger.info("scheme property: " + schemaName);
             logger.info("column name: " + columnName);
-            logger.info("values: " + values);
+            logger.info("values: " + rawValues);
             
             ArrayList<String> tepmValues = expectedColumns.get(columnName);
             
-            logger.info("adding values in column: " + columnName);
+            logger.info("adding values in map; column: " + columnName);
 
+            String values = rawValues.substring(1, rawValues.length() - 1).
+                        replace(" ", "");
             String[] valuesArray = values.split("\\,");
             for (String value: valuesArray)
                 tepmValues.add(value);
@@ -75,11 +79,15 @@ public class ReportTopicListener implements MessageListener {
             Boolean arrivalSign = false;
             for (Map.Entry<String, ArrayList<String>> entryExpected: expectedColumns.entrySet()) {
                 if (entryExpected.getValue().isEmpty()) {
+                    logger.info("emptyValues in column:" + entryExpected.getKey());
                     arrivalSign = false;
                     break;
                 }
-                else
+                else {
+                    logger.info("not empty values in column:" + entryExpected.getKey());
+                    logger.info("values: " + entryExpected.getValue().toString());
                     arrivalSign = true;
+                }
 
             }
             
