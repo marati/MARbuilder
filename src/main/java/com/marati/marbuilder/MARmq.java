@@ -227,7 +227,7 @@ public class MARmq {
                     bytesMessage.setStringProperty("scheme_name", rootElementName);
                     bytesMessage.setStringProperty("filename", fileToSending.getName());
                     
-                    MARmqDatabase.saveMapping("NOT_RECEIVE", ip, rootElementName, fileToSending.getName());
+                    //MARmqDatabase.saveMapping("NOT_RECEIVE", ip, rootElementName, fileToSending.getName());
                     
                     byte[] bytes = new byte[(int)length];
                     int offset = 0;
@@ -254,6 +254,9 @@ public class MARmq {
                         bytesMessage.setStringProperty("md5", md5file);
                         
                         logger.info("preparation to send message, ID: " + md5file);
+                        logger.info(
+                                String.format("properties: ip (%s), scheme_name (%s), filename (%s)",
+                                ip, rootElementName, fileToSending.getName()));
                         
                     } catch (final NoSuchAlgorithmException e) {
                         logger.error(e.toString());
@@ -326,7 +329,7 @@ public class MARmq {
     }
     
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
-        BuildReport.buildReport(reportName, choosedColumns);
+        new BuildReport(this).buildReport(reportName, choosedColumns);
     }
     
     public void schemeMessageReceived(String xsdDir, String fileName) {

@@ -37,10 +37,10 @@ public class XsdTopicListener implements MessageListener {
                         "[Destination " + msg.getJMSDestination() + "]");
 
             //mini-hardcode: своё сообщение не принимаем
-            if (messageQueue.messageContains(msg.getStringProperty("md5"))) {
+            /*if (messageQueue.messageContains(msg.getStringProperty("md5"))) {
                 System.out.println("своё сообщение пришло" + msg.getStringProperty("md5"));
                 return;
-            }
+            }*/
 
             //сохраняем записаь о пришедшем сообщении в БД
             MARmqDatabase.saveMapping(msg.getJMSMessageID(), ip, schemeName, fileName);

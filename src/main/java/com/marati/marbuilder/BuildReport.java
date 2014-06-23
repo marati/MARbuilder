@@ -20,7 +20,7 @@ public class BuildReport {
         mqManager = mesageQueue;
     }
     
-    public static void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
+    public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         if (mqManager.Connected()) {
             try {
                 String topicName = reportName + "_From_" + mqManager.getConnection().getClientID();
@@ -40,28 +40,33 @@ public class BuildReport {
                     for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
                         String messageId = MARmqDatabase.getAttributeBySchemeName("message_id", entryChoosed.getKey());
                         
-                        TextMessage getMessage = mqManager.getSession().createTextMessage();
-                        getMessage.setText(messageText);
-                        //ответить на сообщение (ID из БД)
-                        getMessage.setJMSCorrelationID(messageId);
-                        //указание топика, на который должны будут прислать ответ клиенту-инициатору
-                        getMessage.setJMSReplyTo(currentTopicDestionation);
+                        //если нам не передавали, значит локальный запрос
+                        if (messageId == "NOT_RECEIVE") {
+                            
+                        } else {
                         
-                        getMessage.setStringProperty("scheme", entryChoosed.getKey());
-                        getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
-                        
-                        producer.send(getMessage);
-                        
-                        ArrayList<String> tempColumns = entryChoosed.getValue();
-                        for (String columnName : tempColumns)
-                            columnsAndEmptyValues.put(columnName, new ArrayList<String>());
-                        
-                        System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
-                        System.out.println(entryChoosed.getValue().toString());
-                        
-                        mqManager.subscribeToTopic(topicName, columnsAndEmptyValues);
+                            TextMessage getMessage = mqManager.getSession().createTextMessage();
+                            getMessage.setText(messageText);
+                            //ответить на сообщение (ID из БД)
+                            getMessage.setJMSCorrelationID(messageId);
+                            //указание топика, на который должны будут прислать ответ клиенту-инициатору
+                            getMessage.setJMSReplyTo(currentTopicDestionation);
+
+                            getMessage.setStringProperty("scheme", entryChoosed.getKey());
+                            getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
+
+                            producer.send(getMessage);
+
+                            ArrayList<String> tempColumns = entryChoosed.getValue();
+                            for (String columnName : tempColumns)
+                                columnsAndEmptyValues.put(columnName, new ArrayList<String>());
+
+                            System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
+                            System.out.println(entryChoosed.getValue().toString());
+                        }
                     }
                     
+                    mqManager.subscribeToTopic(topicName, columnsAndEmptyValues);
                     //reportListener.setExpectedColumns(columnsAndEmptyValues);
                     
                 }

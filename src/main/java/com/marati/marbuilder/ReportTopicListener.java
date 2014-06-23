@@ -3,7 +3,7 @@ package com.marati.marbuilder;
 import java.io.*;
 import java.util.*;
 import javax.jms.*;
-import nu.xom.ParsingException;
+//import nu.xom.ParsingException;
 import org.apache.log4j.Logger;
 
 import gen.DocUtil;
