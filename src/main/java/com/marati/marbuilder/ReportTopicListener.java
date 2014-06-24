@@ -1,6 +1,6 @@
 package com.marati.marbuilder;
 
-import java.io.*;
+//import java.io.*;
 import java.util.*;
 import javax.jms.*;
 //import nu.xom.ParsingException;
@@ -14,24 +14,27 @@ import gen.DocUtil;
 public class ReportTopicListener implements MessageListener {
     private MARmq messageQueue;
     private String projectPath;
-    private TreeMap<String, ArrayList<String>> expectedColumns;
+    private TreeMap<String, ArrayList<String>> expectedColumns =
+            new TreeMap<String, ArrayList<String>>();
     private Boolean arrivalSign = false;
     private String addingRow = null;
     private DocUtil docUtil;
     private final static String topicName = null;
     private final static Logger logger = Logger.getLogger(ReportTopicListener.class);
 
-    public ReportTopicListener(MARmq mq, String projPath, TreeMap<String, ArrayList<String>> expected) {
+    public ReportTopicListener(MARmq mq, String projPath) {
         messageQueue = mq;
         docUtil = messageQueue.getDocUtil();
         
         projectPath = projPath;
-        expectedColumns = expected;
     }
     
-    /*public void setExpectedColumns(TreeMap<String, ArrayList<String>> excected) {
-        expectedColumns = excected;
-    }*/
+    public void setExpectedColumns(ArrayList<String> columns) {
+        for (String columnName : columns) {
+            ArrayList<String> stubList = new ArrayList<String>();
+            expectedColumns.put(columnName, stubList);
+        }
+    }
     
     public void onMessage(Message msg) {
         TextMessage textMessage = (TextMessage)msg;
@@ -67,14 +70,14 @@ public class ReportTopicListener implements MessageListener {
             
             logger.info("map after adding: " + expectedColumns.toString());
             ArrayList<String> tepmValues = expectedColumns.get(columnName);
+            //удаляем заглушечные значения
+            //tepmValues.clear();
             
-            logger.info("adding values in map; column: " + columnName);
-
             String values = rawValues.substring(1, rawValues.length() - 1);
             String[] valuesArray = values.split("\\,");
-            for (String value: valuesArray)
-                tepmValues.add(value); //trim
-
+            logger.info(String.format("adding values %s in map; column - %s",
+                    Arrays.asList(valuesArray).toString(), columnName));
+            tepmValues.addAll(Arrays.asList(valuesArray));
             
             Boolean arrivalSign = false;
             for (Map.Entry<String, ArrayList<String>> entryExpected: expectedColumns.entrySet()) {

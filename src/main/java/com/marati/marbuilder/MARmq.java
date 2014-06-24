@@ -147,8 +147,12 @@ public class MARmq {
         }
     }
     
-    public void subscribeToTopic(String topicName, TreeMap<String, ArrayList<String>> expectedColumns) {
+    public ReportTopicListener subscribeToTopic(String topicName
+            /*TreeMap<String, ArrayList<String>> expectedColumns*/) {
+        ReportTopicListener reportListener = new ReportTopicListener(this, projectPath);
+        
         if (Connected()) {
+            
             Destination topicDestination = getDestinationTopic(topicName);
             if (topicDestination != null) {
                 try {
@@ -157,9 +161,7 @@ public class MARmq {
                     
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic, nameSubscriber);
-                    consumer.setMessageListener(
-                            new ReportTopicListener(this, projectPath, expectedColumns)
-                    );
+                    consumer.setMessageListener(reportListener);
                     
                     logger.info("subscribe to topic: " + topicName);
                     logger.info("subscriber: " + nameSubscriber);
@@ -168,6 +170,8 @@ public class MARmq {
                 }
             }
         }
+        
+        return reportListener;
     }
     
     public static String getIp() {

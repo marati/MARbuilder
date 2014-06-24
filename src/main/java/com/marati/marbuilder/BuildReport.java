@@ -27,6 +27,8 @@ public class BuildReport {
                 String topicName = reportName + "_From_" + clientid;
                 Destination currentTopicDestionation = mqManager.getDestinationTopic(topicName);
                 
+                ReportTopicListener reportListener = mqManager.subscribeToTopic(topicName);
+                
                 //refact: точка-точка
                 Destination serviceDestination = mqManager.getDestinationTopic(serviceTopic);
                 //Destination serviceDestination = mqManager.getDestinationQueue(
@@ -36,7 +38,7 @@ public class BuildReport {
                     MessageProducer producer = mqManager.getSession().createProducer(serviceDestination);
                     producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                     
-                    TreeMap<String, ArrayList<String>> columnsAndEmptyValues = new TreeMap<String, ArrayList<String>>();
+                    //TreeMap<String, ArrayList<String>> columnsAndEmptyValues = new TreeMap<String, ArrayList<String>>();
                     
                     String messageText = "GET";
                     //рассылка GET сообщений всем клиентам с запросом колонок
@@ -55,18 +57,12 @@ public class BuildReport {
                         getMessage.setStringProperty("scheme", entryChoosed.getKey());
                         getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
 
-                        producer.send(getMessage);
-
-                        ArrayList<String> tempColumns = entryChoosed.getValue();
-                        for (String columnName : tempColumns)
-                            columnsAndEmptyValues.put(columnName, new ArrayList<String>());
-
                         System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
                         System.out.println(entryChoosed.getValue().toString());
+                        reportListener.setExpectedColumns(entryChoosed.getValue());
+                        
+                        producer.send(getMessage);
                     }
-                    
-                    mqManager.subscribeToTopic(topicName, columnsAndEmptyValues);
-                    //reportListener.setExpectedColumns(columnsAndEmptyValues);
                     
                 }
             } catch (JMSException ex) {
