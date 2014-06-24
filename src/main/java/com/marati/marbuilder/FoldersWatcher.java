@@ -49,45 +49,56 @@ public class FoldersWatcher {
         HashMap<String, ArrayList<String>> dirsAndTheirFiles = new HashMap<String, ArrayList<String>>();
         
         for (String dir : dirsName) {
-            String currentExtDir = new String(
-                    workingPath + File.separator + dir
-            );
+            String currentExtDir = workingPath + File.separator + dir;
             
-            String xsdDir = new String(
-                    workingPath + File.separator + "xsd"
-            );
+            String xsdDir = workingPath + File.separator + "xsd";
             
-            //File xmlFile = null;
-            ArrayList<String> filesNameWithoutExt = new ArrayList<String>();
             String[] filesNameWithExt = getWorkingFiles(dir);
-            
             if (filesNameWithExt.length == 0)
                 continue;
             
-            for (String fileName : filesNameWithExt) {
-                int dotPos = fileName.lastIndexOf(".");
-                filesNameWithoutExt.add( fileName.substring(0, dotPos) );
-            }
+            ArrayList<String> indexFilesWithoutExt = new ArrayList<String>();
+            
+            String[] allXsdFiles = getWorkingFiles("xsd");
+            ArrayList<String> allXsdCollection = new ArrayList<String>();
+            allXsdCollection.addAll(Arrays.asList(allXsdFiles));
             
             //Проверить, существует ли xsd; если нет - создать
-            for (String fileName : filesNameWithoutExt) {
-                File currentFile = new File(
-                        xsdDir + File.separator + fileName + ".xsd"
-                );
+            for (String fileName : filesNameWithExt) {
                 
-                if (currentFile.length() == 0) {
-                    logger.info("File " + currentFile.getAbsolutePath() + " not found, create XSD");
+                int dotPos = fileName.lastIndexOf(".");
+                String fileNameWithoutExt = fileName.substring(0, dotPos);
+                
+                String currentXsdFile = fileNameWithoutExt + ".xsd";
+                if (!allXsdCollection.contains(currentXsdFile)) {
+                    File xsdFile = new File(
+                            xsdDir + File.separator + currentXsdFile
+                    );
+                    logger.info("File " + xsdFile.getAbsolutePath() + " not found, create XSD");
                     
-                    File xmlFile = new File(currentExtDir + File.separator + fileName + ".xml");
-                    OutputStream os = new FileOutputStream(currentFile);
+                    File xmlFile = new File(currentExtDir + File.separator + fileNameWithoutExt + ".xml");
+                    OutputStream os = new FileOutputStream(xsdFile);
                     String rootElementName = xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                     
-                    messageQueue.sendFile(currentFile.getAbsolutePath(), rootElementName);
-                } else {
-                    dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
+                    messageQueue.sendFile(xsdFile.getAbsolutePath(), rootElementName);
+                    
+
                 }
                 
             }
+            
+            //refact: создать перем. currentXsdDir (для xml и xsd)
+
+            //то, что не отправляли в очередь, добавляем в виджет
+            for (String xsdFile : allXsdFiles) {
+                int dotPos = xsdFile.lastIndexOf(".");
+                String xsdFileWithoutExt = xsdFile.substring(0, dotPos);
+                
+                indexFilesWithoutExt.add(xsdFileWithoutExt);
+            }
+            
+            logger.info("index xsd :" + indexFilesWithoutExt.toString());
+            dirsAndTheirFiles.put(xsdDir, indexFilesWithoutExt);
         }
         
         tablesGen.createTablesFromXsd(dirsAndTheirFiles);
@@ -116,6 +127,7 @@ public class FoldersWatcher {
         
         String[] extDirs = {"xml", "xlc"};
         checkCurrentExtDir(extDirs);
+        //checkDownloadXsd();
     }
     
     /*public String getReceivedMessageIdsByString() {

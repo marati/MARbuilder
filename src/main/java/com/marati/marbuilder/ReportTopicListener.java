@@ -44,7 +44,7 @@ public class ReportTopicListener implements MessageListener {
                         "[ID " + messageId + "], " +
                         "[Destination " + msg.getJMSDestination() + "]");
             
-            String myIpAddr = messageQueue.getIp();
+            //String myIpAddr = messageQueue.getIp();
             //если совпадают, то отколняем сооющение; своего не надо
             /*if (myIpAddr.equals(ip)) {
                 logger.info("receive my message: IP sender = IP receiver [" +
@@ -65,6 +65,7 @@ public class ReportTopicListener implements MessageListener {
             logger.info("column name: " + columnName);
             logger.info("values: " + rawValues);
             
+            logger.info("map after adding: " + expectedColumns.toString());
             ArrayList<String> tepmValues = expectedColumns.get(columnName);
             
             logger.info("adding values in map; column: " + columnName);
