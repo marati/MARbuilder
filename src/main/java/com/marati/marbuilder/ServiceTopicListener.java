@@ -20,6 +20,10 @@ public class ServiceTopicListener implements MessageListener {
         projectPath = projPath;
     }
     
+    public void sendMessage() {
+        
+    }
+    
     public void onMessage(Message msg) {
         TextMessage textMessage = (TextMessage)msg;
         
@@ -45,26 +49,28 @@ public class ServiceTopicListener implements MessageListener {
             
             if (command.equals("GET")) {
                 
-                String schemaName = msg.getStringProperty("scheme");
+                String schemeName = msg.getStringProperty("scheme");
                 String rawColumnsStr = msg.getStringProperty("columns");
                 String columnsStr = rawColumnsStr.substring(1, rawColumnsStr.length() - 1);
-                        //replace(" ", "");
                 
                 logger.info("receive GET");
-                logger.info("scheme property: " + schemaName);
+                logger.info("scheme property: " + schemeName);
                 logger.info("columns property: " + columnsStr);
                 
-                String fileName = messageQueue.getAttributeFromDatabase("file_name", schemaName);
+                String fileName = messageQueue.getAttributeFromDatabase("file_name", schemeName);
                 
                 Map<String, ArrayList<String>> dataFromXml =
                         messageQueue.createXmlData(fileName, columnsStr);
                 
-                
-                Destination reportDestionation = msg.getJMSReplyTo();
+                Destination reportDestination = msg.getJMSReplyTo();
                 logger.info("destination sender: " + msg.getJMSReplyTo().toString());
                 
-                if (reportDestionation != null) {
-                    MessageProducer producer = messageQueue.getSession().createProducer(reportDestionation);
+                //запоминаем кому и куда посылаем сообщение
+                MARmqDatabase.saveSourceMapping(
+                        schemeName, reportDestination.toString(), columnsStr.toString());
+                
+                if (reportDestination != null) {
+                    MessageProducer producer = messageQueue.getSession().createProducer(reportDestination);
                     producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                     
                     String messageText = "SEND";
@@ -77,7 +83,7 @@ public class ServiceTopicListener implements MessageListener {
                         String columnValues = entryData.getValue().toString();
                         //sendMessage.setString(columnName, columnValues);
                         
-                        sendMessage.setStringProperty("scheme", schemaName);
+                        sendMessage.setStringProperty("scheme", schemeName);
                         sendMessage.setStringProperty("column", columnName);
                         sendMessage.setStringProperty("ip", myIpAddr);
                         sendMessage.setStringProperty("values", columnValues);

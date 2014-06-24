@@ -25,11 +25,10 @@ public class BuildReport {
             try {
                 String clientid = mqManager.getConnection().getClientID();
                 String topicName = reportName + "_From_" + clientid;
-                Destination currentTopicDestionation = mqManager.getDestinationTopic(topicName);
+                Destination currentTopicDestination = mqManager.getDestinationTopic(topicName);
                 
                 ReportTopicListener reportListener = mqManager.subscribeToTopic(topicName);
                 
-                //refact: точка-точка
                 Destination serviceDestination = mqManager.getDestinationTopic(serviceTopic);
                 //Destination serviceDestination = mqManager.getDestinationQueue(
                         //String.format("build_%s_From_%s", reportName, clientid));
@@ -51,7 +50,7 @@ public class BuildReport {
                         //ответить на сообщение (ID из БД)
                         getMessage.setJMSCorrelationID(messageId);
                         //указание топика, на который должны будут прислать ответ клиенту-инициатору
-                        getMessage.setJMSReplyTo(currentTopicDestionation);
+                        getMessage.setJMSReplyTo(currentTopicDestination);
 
                         getMessage.setStringProperty("destination_ip", destinationIp);
                         getMessage.setStringProperty("scheme", entryChoosed.getKey());
@@ -70,6 +69,53 @@ public class BuildReport {
                 logger.error(ex);
             }
             
+        }
+    }
+    
+    public void updateReport(String fileName) {
+        if (mqManager.Connected()) {
+            try {
+                //берём из scheme_mapping имя файла
+                String schemeName = MARmqDatabase.getAttributeByFileName("scheme_name", fileName);
+                
+                String columns = MARmqDatabase.getAttributeSourceByScheme("columns", schemeName);
+                String topicName = MARmqDatabase.getAttributeSourceByScheme("destination_topic", schemeName);
+                
+                Destination currentTopicDestination = mqManager.getDestinationTopic(topicName);
+                
+                if (currentTopicDestination != null) {
+                    MessageProducer producer = mqManager.getSession().createProducer(currentTopicDestination);
+                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
+                    
+                    String messageText = "UPD";
+                    
+                    //получаем данные
+                    Map<String, ArrayList<String>> dataFromXml =
+                            mqManager.createXmlData(fileName, columns);
+                    
+                    for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
+                        TextMessage sendMessage = mqManager.getSession().createTextMessage();
+                        
+                        String columnName = entryData.getKey();
+                        String columnValues = entryData.getValue().toString();
+                        //sendMessage.setString(columnName, columnValues);
+                        
+                        sendMessage.setStringProperty("scheme", schemeName);
+                        sendMessage.setStringProperty("column", columnName);
+                        sendMessage.setStringProperty("ip", mqManager.getIp());
+                        sendMessage.setStringProperty("values", columnValues);
+                        
+                        sendMessage.setText(messageText);
+                        
+                        logger.info("preparation to update data [tableColumn: " + columnName + "]");
+                        
+                        producer.send(sendMessage);
+                    }
+                }
+                
+            } catch (JMSException ex) {
+                logger.error(ex);
+            }
         }
     }
 }

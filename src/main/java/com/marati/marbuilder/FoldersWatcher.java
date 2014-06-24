@@ -2,26 +2,43 @@ package com.marati.marbuilder;
 
 import java.io.*;
 import java.nio.charset.Charset;
+
 import java.util.*;
 import org.apache.log4j.Logger;
+/*import org.apache.commons.vfs2.FileChangeEvent;
+import org.apache.commons.vfs2.FileListener;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemManager;
+import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.impl.DefaultFileMonitor;*/
+
+import java.nio.file.*;
+import static java.nio.file.StandardWatchEventKinds.*;
+import static java.nio.file.LinkOption.*;
+import java.nio.file.attribute.*;
 
 import gen.ParseException;
 import gen.XsdGen;
 import gen.DocUtil;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.logging.Level;
 import nu.xom.ParsingException;
-
-import com.marati.marbuilder.MARmq;
+import org.apache.commons.vfs2.FileSystemException;
 /**
  *
  * @author marat
  */
+
 public class FoldersWatcher {
     
     private String workingPath = "";
     private final XsdGen xsdGen;
     private final DocUtil tablesGen;
-    private final MARmq messageQueue;
+    private static MARmq messageQueue;
     private static final Logger logger = Logger.getLogger(FoldersWatcher.class);
+    
+    //private static DefaultFileMonitor fm = null;
     
     public FoldersWatcher(DocUtil tablesGenner) {
         xsdGen = new XsdGen();
@@ -81,8 +98,6 @@ public class FoldersWatcher {
                     String rootElementName = xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                     
                     messageQueue.sendFile(xsdFile.getAbsolutePath(), rootElementName);
-                    
-
                 }
                 
             }
@@ -104,6 +119,53 @@ public class FoldersWatcher {
         tablesGen.createTablesFromXsd(dirsAndTheirFiles);
     }
     
+    public void mainThreadUpdFunc(String fileName) {
+        messageQueue.updatedData(fileName);
+    }
+    
+    public void setWatching(/*String[] dirsName*/) {
+        
+        Executor runner = Executors.newFixedThreadPool(1);
+        runner.execute(new Runnable() {
+
+        @Override
+        public void run() {
+            try {
+                WatchService watcher = FileSystems.getDefault().newWatchService();
+                
+                Path dir = Paths.get(workingPath + File.separator + "xml");
+                WatchKey key = dir.register(watcher, ENTRY_MODIFY);
+                
+                for (;;) {
+                    key = watcher.take();
+                    
+                    for (WatchEvent<?> event: key.pollEvents()) {
+                        WatchEvent.Kind<?> kind = event.kind();
+                        
+                        WatchEvent<Path> ev = (WatchEvent<Path>)event;
+                        Path fileName = ev.context();
+                        
+                        logger.info("file Update : " + fileName.toString());
+                        
+                        mainThreadUpdFunc(fileName.toString());
+                    }
+                    boolean valid = key.reset();
+                    if (!valid) {
+                        break;
+                    }
+                }
+                        
+                } catch (FileSystemException ex) {
+                    logger.error(ex);
+                } catch (IOException ex) {
+                    logger.error(ex);
+                } catch (InterruptedException ex) {
+                    logger.error(ex);
+                }
+            }
+        });
+    }
+    
     public void checkWorkingDir(String workingDir) throws ParseException, IOException, ParsingException {
         if (workingPath.equals(workingDir))
             return;
@@ -115,7 +177,7 @@ public class FoldersWatcher {
         
         //makes new folders
         String[] dirs = {
-            "xml/uploads/", "xml/xsd/", "xlc/uploads/", "xlc/xsd/", "xsd"
+            "xml/xsd/", "xlc/xsd/", "xsd"
         };
         
         for (int i = 0; i < dirs.length; ++i) {
@@ -126,8 +188,8 @@ public class FoldersWatcher {
         }
         
         String[] extDirs = {"xml", "xlc"};
+        setWatching(/*extDirs*/);
         checkCurrentExtDir(extDirs);
-        //checkDownloadXsd();
     }
     
     /*public String getReceivedMessageIdsByString() {
@@ -141,4 +203,35 @@ public class FoldersWatcher {
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         messageQueue.buildReport(reportName, choosedColumns);
     }
+    
+    /*static class DirsListener implements FileListener {  
+        private static int counter = 0;
+        
+        public void fileCreated(FileChangeEvent fileChangeEvent)
+                        throws Exception {
+                    System.out.println("file created : "
+                            + fileChangeEvent.getFile().getName());
+        }
+
+        public void fileDeleted(FileChangeEvent fileChangeEvent)
+                throws Exception {
+            System.out.println("file deleted : "
+                    + fileChangeEvent.getFile().getName());
+        }
+
+        public void fileChanged(FileChangeEvent fileChangeEvent)
+                throws Exception {
+            String fileName = fileChangeEvent.getFile().getName().getBaseName();
+            System.out.println(String.format(
+                    "File [%s] changed event from [%s], counter[%s]", fileChangeEvent
+                            .getFile().getName(), this, ++counter));
+            
+            synchronized (this) { //notify waiting thread
+                this.notifyAll();
+                this.wait(7000);
+                messageQueue.updatedData(fileName);
+            }
+            
+        }
+    }*/
 }

@@ -31,6 +31,8 @@ public class MARmq {
     private static Connection connection = null; 
     private static Session session;
     private static Destination mainDestination; 
+    private static ServiceTopicListener serviceListener = null;
+    private static BuildReport buildReport = null;
     
     private static Logger logger = Logger.getLogger(MARmq.class);
     private final MARmqDatabase marDatabase = new MARmqDatabase();
@@ -83,9 +85,19 @@ public class MARmq {
         }
     }
     
-   public Connection getConnection() {
-       return connection;
-   }
+    private void closeConnection() {
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (JMSException ex) {
+                logger.info(ex);
+            }
+        }
+    }
+    
+    public Connection getConnection() {
+        return connection;
+    }
     
     public static Session getSession() {
         return session;
@@ -137,7 +149,8 @@ public class MARmq {
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic,
                             "serviceSubFromPath("+projectPath+")");
-                    consumer.setMessageListener(new ServiceTopicListener(this, projectPath));
+                    serviceListener = new ServiceTopicListener(this, projectPath);
+                    consumer.setMessageListener(serviceListener);
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
@@ -342,7 +355,8 @@ public class MARmq {
     }
     
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
-        new BuildReport(this).buildReport(reportName, choosedColumns);
+        buildReport = new BuildReport(this);
+        buildReport.buildReport(reportName, choosedColumns);
     }
     
     public void schemeMessageReceived(String xsdDir, String fileName) {
@@ -366,14 +380,11 @@ public class MARmq {
         return docUtil.createSerializableXmlData(fileName, strColumns);
     }
     
-    public void closeConnection() {
-        if (connection != null) {
-            try {
-                connection.close();
-            } catch (JMSException ex) {
-                logger.info(ex);
-            }
-        }
+    public void updatedData(String fileName) {
+        logger.info("update file : " + fileName);
+        
+        if (buildReport != null)
+            buildReport.updateReport(fileName);
     }
 
 }

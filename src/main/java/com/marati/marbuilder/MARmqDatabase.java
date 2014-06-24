@@ -20,6 +20,7 @@ public class MARmqDatabase {
     public MARmqDatabase() {
         createMappingSchemeTable();
         createMessagesTable();
+        createSourceMappingTable();
     }
     
     private void createMappingSchemeTable() {
@@ -58,6 +59,24 @@ public class MARmqDatabase {
         }  
     }
     
+    private void createSourceMappingTable() {
+        try {
+            Statement createStatement = sqliteCon.createStatement();
+
+            String createQuery = 
+                    "CREATE TABLE source_mapping (" +
+                    "id integer primary key autoincrement not null," +
+                    "scheme_name text not null," +
+                    "columns text not null," +
+                    "destination_topic text not null)" ;
+                    
+            createStatement.executeUpdate(createQuery);
+            createStatement.close();
+        } catch (SQLException ex) {
+            logger.info(ex);
+        }  
+    }
+    
     public static String getAttributeBySchemeName(String attribute, String schemeName) {
         String returnAttribute = null;
         
@@ -66,6 +85,29 @@ public class MARmqDatabase {
             
             PreparedStatement ps = sqliteCon.prepareStatement(selectQuery);
             ps.setString(1, schemeName);
+            
+            ResultSet rs = ps.executeQuery();
+            while ( rs.next() ) {
+                returnAttribute = rs.getString(attribute);
+            }
+            
+            ps.close();
+        } catch (SQLException ex) {
+            logger.info(ex);
+        }  
+        
+        return returnAttribute;
+    }
+    
+    //refact
+    public static String getAttributeByFileName(String attribute, String fileName) {
+        String returnAttribute = null;
+        
+        try {
+            String selectQuery = "SELECT " + attribute + " FROM scheme_mapping WHERE file_name = (?)";
+            
+            PreparedStatement ps = sqliteCon.prepareStatement(selectQuery);
+            ps.setString(1, fileName);
             
             ResultSet rs = ps.executeQuery();
             while ( rs.next() ) {
@@ -118,6 +160,52 @@ public class MARmqDatabase {
         } catch (SQLException ex) {
             logger.info(ex);
         } 
+    }
+    
+    public static void saveSourceMapping(String schemeName, String columns, String destinationTopic) {
+        try {
+            String insertQuery = 
+                    "INSERT INTO source_mapping (scheme_name, columns, destination_topic)" +
+                    "VALUES (?, ?, ?)";
+            
+            PreparedStatement ps = sqliteCon.prepareStatement(insertQuery);
+            ps.setString(1, schemeName);
+            ps.setString(2, columns);
+            ps.setString(3, destinationTopic);
+            ps.executeUpdate();
+            
+            String loggerInfo = String.format("insert into source_mapping [%s, %s, %s]",
+                    schemeName, columns, destinationTopic);
+            logger.info(loggerInfo);
+            
+            ps.close();
+        } catch (SQLException ex) {
+            logger.info(ex);
+        } 
+    }
+    
+    public static String getAttributeSourceByScheme(String attribute, String schemeName) {
+        String returnAttribute = null;
+        
+        try {
+            String selectQuery = 
+                    String.format("SELECT %s FROM source_mapping WHERE scheme_name = (?)", attribute);
+            
+            PreparedStatement ps = sqliteCon.prepareStatement(selectQuery);
+            ps.setString(1, schemeName);
+            
+            ResultSet rs = ps.executeQuery();
+            while ( rs.next() ) {
+                returnAttribute = rs.getString(attribute);
+            }
+            
+            ps.close();
+            
+        } catch (SQLException ex) {
+            logger.info(ex);
+        }  
+        
+        return returnAttribute;
     }
     
     public Boolean messageIdContains(String id) {

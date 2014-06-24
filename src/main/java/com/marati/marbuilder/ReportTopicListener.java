@@ -60,15 +60,21 @@ public class ReportTopicListener implements MessageListener {
             
             logger.info("map after adding: " + expectedColumns.toString());
             
-            String values = rawValues.substring(1, rawValues.length() - 1);
-            String[] valuesArray = values.split("\\,\\s*");
-            logger.info(String.format("adding values %s in map; column -%s",
-                    Arrays.asList(valuesArray).toString(), columnName));
+            String command = textMessage.getText();
+            logger.info("comand: " + command);
+            if (command.equals("SEND")) {
+                String values = rawValues.substring(1, rawValues.length() - 1);
+                String[] valuesArray = values.split("\\,\\s*");
+                logger.info(String.format("adding values %s in map; column -%s",
+                        Arrays.asList(valuesArray).toString(), columnName));
 
-            ArrayList<String> expectedValues = new ArrayList<String>();
-            expectedValues.addAll(Arrays.asList(valuesArray));
-            
-            docUtil.addRowsInSummaryTable(columnName, expectedValues);
+                ArrayList<String> expectedValues = new ArrayList<String>();
+                expectedValues.addAll(Arrays.asList(valuesArray));
+
+                docUtil.addRowsInSummaryTable(columnName, expectedValues);
+            } else if (command.equals("UPD")) {
+                logger.info("UPDATE msg receive");
+            }
             
         } catch (JMSException ex) {
             logger.error(ex);
