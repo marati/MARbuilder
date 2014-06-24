@@ -67,8 +67,6 @@ class MARDefaultTableModel extends DefaultTableModel {
     
     // Map<String, ArrayList<String>> : String - columnName, int - index
     public int getIndexByColumnName(String columnName) {
-        System.out.println("mapping: " + mappingColumnsAndIds.toString());
-        System.out.println("get column:" + columnName);
         return mappingColumnsAndIds.get(columnName);
     }
 }

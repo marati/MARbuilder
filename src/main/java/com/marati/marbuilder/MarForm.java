@@ -249,13 +249,15 @@ public class MarForm extends JFrame
         MARDefaultTableModel marModel =  (MARDefaultTableModel)summaryTable.getModel();
         
         int rowIndex = 0;
-        for (String rowValue : values) {
-            int columnIndex = marModel.getIndexByColumnName(column);
-            marModel.setValueAt(rowValue, rowIndex, columnIndex);
+        int columnIndex = marModel.getIndexByColumnName(column);
+        
+        Iterator<String> valuesIt = values.iterator();
+        while (valuesIt.hasNext()) {
+            marModel.setValueAt(valuesIt.next(), rowIndex, columnIndex);
             ++rowIndex;
 
             int rowCount = marModel.getRowCount();
-            if (rowIndex >= rowCount)
+            if (rowIndex >= rowCount && valuesIt.hasNext())
                 marModel.addRow(new Object[]{"", ""});
         }
     }
