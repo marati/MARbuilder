@@ -111,7 +111,7 @@ public class DocUtil {
             Builder parser = new Builder();
             Document doc = parser.build(xmlFile);
             
-            String[] columns = strColumns.split("\\,");
+            String[] columns = strColumns.split("\\,\\s*");
             for (String column : columns) {
                 ArrayList<String> valuesFromColumn = new ArrayList<String>();
                 Nodes nodes = doc.query(".//text()//parent::" + column);
@@ -131,7 +131,7 @@ public class DocUtil {
         return dataFromXml;
     }
     
-    public void addRowsInSummaryTable(TreeMap<String, ArrayList<String>> columnsAndRows) {
-        marForm.addRowsInSummaryTable(columnsAndRows);
+    public void addRowsInSummaryTable(String column, ArrayList<String> values) {
+        marForm.addRowsInSummaryTable(column, values);
     }
 }

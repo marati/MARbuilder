@@ -55,11 +55,12 @@ public class BuildReport {
 
                         getMessage.setStringProperty("destination_ip", destinationIp);
                         getMessage.setStringProperty("scheme", entryChoosed.getKey());
-                        getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
+                        ArrayList<String> columns = entryChoosed.getValue();
+                        getMessage.setStringProperty("columns", columns.toString());
 
                         System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
-                        System.out.println(entryChoosed.getValue().toString());
-                        reportListener.setExpectedColumns(entryChoosed.getValue());
+                        //System.out.println(entryChoosed.getValue().toString());
+                        reportListener.setExpectedColumns(columns);
                         
                         producer.send(getMessage);
                     }

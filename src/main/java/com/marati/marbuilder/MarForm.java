@@ -245,25 +245,19 @@ public class MarForm extends JFrame
         }
     }
     
-    public void addRowsInSummaryTable(/*String tableName,*/ TreeMap<String, ArrayList<String>> columnsAndRows) {
-        //String tempValues = null;
+    public void addRowsInSummaryTable(String column, ArrayList<String> values) {
         MARDefaultTableModel marModel =  (MARDefaultTableModel)summaryTable.getModel();
         
-        for (Map.Entry<String, ArrayList<String>> entryData: columnsAndRows.entrySet()) {
-            int columnIndex = marModel.getIndexByColumnName(entryData.getKey());
-            int rowIndex = 0;
-            
-            ArrayList<String> tempRows = entryData.getValue();
-            logger.info("adding values: " + tempRows.toString() + " columnIndex: " + columnIndex);
-            for (String row : tempRows) {
-                marModel.setValueAt(row, rowIndex, columnIndex);
-                ++rowIndex;
-                
-                int rowCount = marModel.getRowCount();
-                if (rowIndex >= rowCount)
-                    marModel.addRow(new Object[]{"", ""});
-            }
-        }        
+        int rowIndex = 0;
+        for (String rowValue : values) {
+            int columnIndex = marModel.getIndexByColumnName(column);
+            marModel.setValueAt(rowValue, rowIndex, columnIndex);
+            ++rowIndex;
+
+            int rowCount = marModel.getRowCount();
+            if (rowIndex >= rowCount)
+                marModel.addRow(new Object[]{"", ""});
+        }
     }
     
 }
