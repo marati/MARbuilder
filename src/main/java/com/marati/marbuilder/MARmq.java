@@ -100,6 +100,15 @@ public class MARmq {
         }
     }
     
+    /*public static Destination getDestinationQueue(String queueName) {
+        try {
+            return session.createQueue(queueName);
+        } catch (JMSException ex) {
+            logger.error(ex);
+            return null;
+        }
+    }*/
+    
     public void activateReceiver() {
         if (Connected()) {
             

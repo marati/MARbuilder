@@ -23,11 +23,14 @@ public class BuildReport {
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         if (mqManager.Connected()) {
             try {
-                String topicName = reportName + "_From_" + mqManager.getConnection().getClientID();
+                String clientid = mqManager.getConnection().getClientID();
+                String topicName = reportName + "_From_" + clientid;
                 Destination currentTopicDestionation = mqManager.getDestinationTopic(topicName);
                 
                 //refact: точка-точка
                 Destination serviceDestination = mqManager.getDestinationTopic(serviceTopic);
+                //Destination serviceDestination = mqManager.getDestinationQueue(
+                        //String.format("build_%s_From_%s", reportName, clientid));
                 
                 if (serviceDestination != null) {
                     MessageProducer producer = mqManager.getSession().createProducer(serviceDestination);
@@ -39,31 +42,27 @@ public class BuildReport {
                     //рассылка GET сообщений всем клиентам с запросом колонок
                     for (Map.Entry<String, ArrayList<String>> entryChoosed: choosedColumns.entrySet()) {
                         String messageId = MARmqDatabase.getAttributeBySchemeName("message_id", entryChoosed.getKey());
+                        String destinationIp = MARmqDatabase.getAttributeBySchemeName("ip", entryChoosed.getKey());
                         
-                        //если нам не передавали, значит локальный запрос
-                        if (messageId == "NOT_RECEIVE") {
-                            
-                        } else {
-                        
-                            TextMessage getMessage = mqManager.getSession().createTextMessage();
-                            getMessage.setText(messageText);
-                            //ответить на сообщение (ID из БД)
-                            getMessage.setJMSCorrelationID(messageId);
-                            //указание топика, на который должны будут прислать ответ клиенту-инициатору
-                            getMessage.setJMSReplyTo(currentTopicDestionation);
+                        TextMessage getMessage = mqManager.getSession().createTextMessage();
+                        getMessage.setText(messageText);
+                        //ответить на сообщение (ID из БД)
+                        getMessage.setJMSCorrelationID(messageId);
+                        //указание топика, на который должны будут прислать ответ клиенту-инициатору
+                        getMessage.setJMSReplyTo(currentTopicDestionation);
 
-                            getMessage.setStringProperty("scheme", entryChoosed.getKey());
-                            getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
+                        getMessage.setStringProperty("destination_ip", destinationIp);
+                        getMessage.setStringProperty("scheme", entryChoosed.getKey());
+                        getMessage.setStringProperty("columns", entryChoosed.getValue().toString());
 
-                            producer.send(getMessage);
+                        producer.send(getMessage);
 
-                            ArrayList<String> tempColumns = entryChoosed.getValue();
-                            for (String columnName : tempColumns)
-                                columnsAndEmptyValues.put(columnName, new ArrayList<String>());
+                        ArrayList<String> tempColumns = entryChoosed.getValue();
+                        for (String columnName : tempColumns)
+                            columnsAndEmptyValues.put(columnName, new ArrayList<String>());
 
-                            System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
-                            System.out.println(entryChoosed.getValue().toString());
-                        }
+                        System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
+                        System.out.println(entryChoosed.getValue().toString());
                     }
                     
                     mqManager.subscribeToTopic(topicName, columnsAndEmptyValues);

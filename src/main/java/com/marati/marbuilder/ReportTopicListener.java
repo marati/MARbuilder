@@ -46,14 +46,14 @@ public class ReportTopicListener implements MessageListener {
             
             String myIpAddr = messageQueue.getIp();
             //если совпадают, то отколняем сооющение; своего не надо
-            if (myIpAddr.equals(ip)) {
+            /*if (myIpAddr.equals(ip)) {
                 logger.info("receive my message: IP sender = IP receiver [" +
                         ip + " = " + myIpAddr + "]");
                 return;
             } else {
                 logger.info("receive message: IP sender != IP receiver [" +
                         ip + " != " + myIpAddr + "]");
-            }
+            }*/
             
             String schemaName = msg.getStringProperty("scheme");
             String columnName = msg.getStringProperty("column");
@@ -69,11 +69,10 @@ public class ReportTopicListener implements MessageListener {
             
             logger.info("adding values in map; column: " + columnName);
 
-            String values = rawValues.substring(1, rawValues.length() - 1).
-                        replace(" ", "");
+            String values = rawValues.substring(1, rawValues.length() - 1);
             String[] valuesArray = values.split("\\,");
             for (String value: valuesArray)
-                tepmValues.add(value);
+                tepmValues.add(value); //trim
 
             
             Boolean arrivalSign = false;

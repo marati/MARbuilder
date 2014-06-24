@@ -54,7 +54,7 @@ public class FoldersWatcher {
             );
             
             String xsdDir = new String(
-                    currentExtDir + File.separator + "xsd"
+                    workingPath + File.separator + "xsd"
             );
             
             //File xmlFile = null;
@@ -65,12 +65,9 @@ public class FoldersWatcher {
                 continue;
             
             for (String fileName : filesNameWithExt) {
-                
                 int dotPos = fileName.lastIndexOf(".");
                 filesNameWithoutExt.add( fileName.substring(0, dotPos) );
             }
-            
-            dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
             
             //Проверить, существует ли xsd; если нет - создать
             for (String fileName : filesNameWithoutExt) {
@@ -86,12 +83,14 @@ public class FoldersWatcher {
                     String rootElementName = xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                     
                     messageQueue.sendFile(currentFile.getAbsolutePath(), rootElementName);
+                } else {
+                    dirsAndTheirFiles.put(xsdDir, filesNameWithoutExt);
                 }
                 
             }
         }
         
-        //tablesGen.createTablesFromXsd(dirsAndTheirFiles);
+        tablesGen.createTablesFromXsd(dirsAndTheirFiles);
     }
     
     public void checkWorkingDir(String workingDir) throws ParseException, IOException, ParsingException {

@@ -24,7 +24,7 @@ public class ServiceTopicListener implements MessageListener {
         TextMessage textMessage = (TextMessage)msg;
         
         try {
-            String ip = msg.getStringProperty("ip");
+            String ip = msg.getStringProperty("destination_ip");
             String messageId = msg.getJMSMessageID();
             
             logger.info("receive message: [IP " + ip + "], " +
@@ -32,19 +32,23 @@ public class ServiceTopicListener implements MessageListener {
                         "[Destination " + msg.getJMSDestination() + "]");
             
             String myIpAddr = messageQueue.getIp();
-            //если совпадают, то отколняем сооющение; своего не надо
+            //если совпадают, то принимаем
             if (myIpAddr.equals(ip)) {
                 logger.info("receive my message: IP sender = IP receiver [" + myIpAddr + "]");
+            } else {
+                logger.info("receive message: IP sender != IP receiver [" +
+                        ip + " != " + myIpAddr + "]");
                 return;
             }
             
             String command = textMessage.getText();
             
             if (command.equals("GET")) {
+                
                 String schemaName = msg.getStringProperty("scheme");
                 String rawColumnsStr = msg.getStringProperty("columns");
-                String columnsStr = rawColumnsStr.substring(1, rawColumnsStr.length() - 1).
-                        replace(" ", "");
+                String columnsStr = rawColumnsStr.substring(1, rawColumnsStr.length() - 1);
+                        //replace(" ", "");
                 
                 logger.info("receive GET");
                 logger.info("scheme property: " + schemaName);
