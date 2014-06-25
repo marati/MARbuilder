@@ -72,6 +72,10 @@ public class ReportTopicListener implements MessageListener {
                 expectedValues.addAll(Arrays.asList(valuesArray));
 
                 docUtil.addRowsInSummaryTable(columnName, expectedValues);
+                
+                //когда всё приняли - зкарываем соединение
+                //messageQueue.getSession().close();
+                //messageQueue.getConnection().close();
             } else if (command.equals("UPD")) {
                 logger.info("UPDATE msg receive");
             }

@@ -69,30 +69,34 @@ public class ServiceTopicListener implements MessageListener {
                 MARmqDatabase.saveSourceMapping(
                         schemeName, reportDestination.toString(), columnsStr.toString());
                 
-                if (reportDestination != null) {
-                    MessageProducer producer = messageQueue.getSession().createProducer(reportDestination);
-                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-                    
-                    String messageText = "SEND";
-                    
-                    for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
-                        TextMessage sendMessage = messageQueue.getSession().createTextMessage();
-                        sendMessage.setJMSCorrelationID(messageId);
+                if (messageQueue.Connected()) {
+                
+                    if (reportDestination != null) {
+                        MessageProducer producer = messageQueue.getSession().createProducer(reportDestination);
+                        producer.setDeliveryMode(DeliveryMode.PERSISTENT);
+
+                        String messageText = "SEND";
+
+                        for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
+                            TextMessage sendMessage = messageQueue.getSession().createTextMessage();
+                            sendMessage.setJMSCorrelationID(messageId);
+
+                            String columnName = entryData.getKey();
+                            String columnValues = entryData.getValue().toString();
+                            //sendMessage.setString(columnName, columnValues);
+
+                            sendMessage.setStringProperty("scheme", schemeName);
+                            sendMessage.setStringProperty("column", columnName);
+                            sendMessage.setStringProperty("ip", myIpAddr);
+                            sendMessage.setStringProperty("values", columnValues);
+
+                            sendMessage.setText(messageText);
+
+                            logger.info("preparation to send data [tableColumn: " + columnName + "]");
+
+                            producer.send(sendMessage);
+                        }
                         
-                        String columnName = entryData.getKey();
-                        String columnValues = entryData.getValue().toString();
-                        //sendMessage.setString(columnName, columnValues);
-                        
-                        sendMessage.setStringProperty("scheme", schemeName);
-                        sendMessage.setStringProperty("column", columnName);
-                        sendMessage.setStringProperty("ip", myIpAddr);
-                        sendMessage.setStringProperty("values", columnValues);
-                        
-                        sendMessage.setText(messageText);
-                        
-                        logger.info("preparation to send data [tableColumn: " + columnName + "]");
-                        
-                        producer.send(sendMessage);
                     }
                 }
             }

@@ -76,6 +76,8 @@ public class MARmq {
                 session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             } else {
                 connection.start();
+                
+                session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             }
             
             return true;
