@@ -144,7 +144,7 @@ public class MARmqDatabase {
         }  
     }
     
-    public void saveMessageId(String id) {
+    public static void saveMessageId(String id) {
         try {
             String insertQuery = 
                     "INSERT INTO messages (message_id)" +

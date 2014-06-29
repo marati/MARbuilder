@@ -102,6 +102,9 @@ public class ServiceTopicListener implements MessageListener {
                             producer.send(sendMessage);
                         }
                         
+                        //после отправки ответа клиентам - закрываем соединение
+                        messageQueue.getSession().close();
+                        
                     }
                 }
             }

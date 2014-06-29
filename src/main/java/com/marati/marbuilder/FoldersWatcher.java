@@ -10,21 +10,21 @@ import org.apache.commons.vfs2.FileListener;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.VFS;
-import org.apache.commons.vfs2.impl.DefaultFileMonitor;*/
+import org.apache.commons.vfs2.impl.DefaultFileMonitor;
+import org.apache.commons.vfs2.FileSystemException;*/
 
 import java.nio.file.*;
 import static java.nio.file.StandardWatchEventKinds.*;
 import static java.nio.file.LinkOption.*;
 import java.nio.file.attribute.*;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import nu.xom.ParsingException;
+
 import gen.ParseException;
 import gen.XsdGen;
 import gen.DocUtil;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import nu.xom.ParsingException;
-import org.apache.commons.vfs2.FileSystemException;
 /**
  *
  * @author marat
@@ -36,6 +36,8 @@ public class FoldersWatcher {
     private final XsdGen xsdGen;
     private final DocUtil tablesGen;
     private static MARmq messageQueue;
+    private DataSender dataSender;
+    
     private static final Logger logger = Logger.getLogger(FoldersWatcher.class);
     
     //private static DefaultFileMonitor fm = null;
@@ -45,6 +47,7 @@ public class FoldersWatcher {
         tablesGen = tablesGenner;
         
         messageQueue = new MARmq(tablesGen);
+        dataSender = messageQueue.getDataSender();
     }
     
     private String[] getWorkingFiles(String dirName) {
@@ -97,7 +100,7 @@ public class FoldersWatcher {
                     OutputStream os = new FileOutputStream(xsdFile);
                     String rootElementName = xsdGen.parse(xmlFile).write(os, Charset.forName("UTF-8"));
                     
-                    messageQueue.sendFile(xsdFile.getAbsolutePath(), rootElementName);
+                    dataSender.sendXsdFile(xsdFile.getAbsolutePath(), rootElementName);
                 }
                 
             }

@@ -10,14 +10,9 @@ import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.net.*;
-import java.math.BigInteger;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 import nu.xom.ParsingException;
 
-import com.marati.marbuilder.MARmqDatabase;
 import gen.DocUtil;
 
 
@@ -41,13 +36,19 @@ public class MARmq {
     private final static String serviceTopic = "ServiceTopic";
     private static String projectPath = null;
     private final DocUtil docUtil;
+    private final DataSender dataSender;
     
     public MARmq(DocUtil util) {
         docUtil = util;
+        dataSender = new DataSender(this, xsdTopic);
     }
     
     public DocUtil getDocUtil() {
         return docUtil;
+    }
+    
+    public DataSender getDataSender() {
+        return dataSender;
     }
     
     public void updateProjectPath(String path) {
@@ -131,8 +132,6 @@ public class MARmq {
             
             if (mainDestination != null) {
                 try {
-                    //MessageConsumer consumer = session.createConsumer(destination);
-                    //consumer.setMessageListener(new Listener());
                     ActiveMQTopic topic = (ActiveMQTopic)mainDestination;
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic,
@@ -227,78 +226,6 @@ public class MARmq {
         }
         
         return ipv4;
-    }
-    
-    public void sendFile(String filePath, String rootElementName) throws IOException {
-        if (Connected()) {
-            mainDestination = getDestinationTopic(xsdTopic);
-            
-            if (mainDestination != null) {
-                try {
-                    MessageProducer producer = session.createProducer(mainDestination);
-                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-                    
-                    File fileToSending = new File(filePath);
-                    InputStream is = new FileInputStream(fileToSending);
-                    
-                    long length = fileToSending.length();
-                    if (length > Integer.MAX_VALUE) {
-                        logger.debug("Файл очень большой");
-                    }
-                    
-                    BytesMessage bytesMessage = session.createBytesMessage();
-                    
-                    //write ip & filename properties
-                    String ip = getIp();
-                    bytesMessage.setStringProperty("ip", ip);
-                    bytesMessage.setStringProperty("scheme_name", rootElementName);
-                    bytesMessage.setStringProperty("filename", fileToSending.getName());
-                    
-                    //MARmqDatabase.saveMapping("NOT_RECEIVE", ip, rootElementName, fileToSending.getName());
-                    
-                    byte[] bytes = new byte[(int)length];
-                    int offset = 0;
-                    int numRead = 0;
-                    
-                    try {
-                        MessageDigest md = MessageDigest.getInstance("MD5");
-
-                        while (offset < bytes.length && numRead >= 0) {
-                            numRead = is.read(bytes, offset, bytes.length - offset);
-
-                            bytesMessage.writeBytes(bytes, offset, bytes.length - offset);
-                            md.update(bytes, offset, bytes.length - offset);
-
-                            offset += numRead;
-                        }
-
-                        if (offset < bytes.length) {
-                            throw new IOException("Не удалось прочитать файл " + fileToSending.getName());
-                        }
-
-                        String md5file = new BigInteger(1, md.digest()).toString(16);
-                        marDatabase.saveMessageId(md5file);
-                        bytesMessage.setStringProperty("md5", md5file);
-                        
-                        logger.info("preparation to send message, ID: " + md5file);
-                        logger.info(
-                                String.format("properties: ip (%s), scheme_name (%s), filename (%s)",
-                                ip, rootElementName, fileToSending.getName()));
-                        
-                    } catch (final NoSuchAlgorithmException e) {
-                        logger.error(e.toString());
-                    }
-
-                    is.close();
-                    
-                    producer.send(bytesMessage);
-                } catch (JMSException ex) {
-                    logger.error(ex);
-                }
-            }
-        } else {
-            logger.info("Соединение закрыто");
-        }
     }
     
     /*сериализация messageIds пока не нужна, сделан переход к хранению в БД
