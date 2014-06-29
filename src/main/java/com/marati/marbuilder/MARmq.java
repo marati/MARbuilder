@@ -201,11 +201,7 @@ public class MARmq {
             for (NetworkInterface netint : Collections.list(nets)) {
                 
                 String netintName = netint.getDisplayName();
-                if (
-                        !netintName.contains("Wireless") &&
-                        !netintName.contains("lan") &&
-                        !netintName.contains("Ethernet")
-                )
+                if (netintName.contains("Loopback"))
                     continue;
                 
                 Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
@@ -213,7 +209,6 @@ public class MARmq {
                     Pattern ip = Pattern.compile("/[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
                     String inetAddr = inetAddress.toString();
                     
-                    logger.info("IP after matching: " + inetAddr);
                     if (ip.matcher(inetAddr).matches()) {
                         ipv4 = inetAddr.substring(1, inetAddr.length());
                         logger.info("IP: " + ipv4);

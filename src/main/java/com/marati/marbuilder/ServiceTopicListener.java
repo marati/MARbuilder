@@ -36,6 +36,11 @@ public class ServiceTopicListener implements MessageListener {
                         "[Destination " + msg.getJMSDestination() + "]");
             
             String myIpAddr = messageQueue.getIp();
+
+            if (myIpAddr == null) {
+                logger.error("IP address not defined");
+                return;
+            }
             //если совпадают, то принимаем
             if (myIpAddr.equals(ip)) {
                 logger.info("receive my message: IP sender = IP receiver [" + myIpAddr + "]");
