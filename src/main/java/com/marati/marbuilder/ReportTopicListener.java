@@ -1,9 +1,7 @@
 package com.marati.marbuilder;
 
-//import java.io.*;
 import java.util.*;
 import javax.jms.*;
-//import nu.xom.ParsingException;
 import org.apache.log4j.Logger;
 
 import gen.DocUtil;
@@ -44,36 +42,31 @@ public class ReportTopicListener implements MessageListener {
                         "[ID " + messageId + "], " +
                         "[Destination " + msg.getJMSDestination() + "]");
             
+            String command = msg.getStringProperty("command");
             String schemaName = msg.getStringProperty("scheme");
             String columnName = msg.getStringProperty("column");
-            String rawValues = msg.getStringProperty("values");
             
             logger.info("receive MapMessage");
             logger.info("scheme property: " + schemaName);
             logger.info("column name: " + columnName);
-            logger.info("values: " + rawValues);
             
-            logger.info("map after adding: " + expectedColumns.toString());
-            
-            String command = textMessage.getText();
             logger.info("comand: " + command);
-            if (command.equals("SEND")) {
-                String values = rawValues.substring(1, rawValues.length() - 1);
-                String[] valuesArray = values.split("\\,\\s*");
-                logger.info(String.format("adding values %s in map; column -%s",
-                        Arrays.asList(valuesArray).toString(), columnName));
+//            if (command.equals("SEND")) {
+//                
+//            } else if (command.equals("UPD")) {
+//                
+//            }
 
-                ArrayList<String> expectedValues = new ArrayList<String>();
-                expectedValues.addAll(Arrays.asList(valuesArray));
+            String rawValues = textMessage.getText();
+            String[] valuesArray = rawValues.split("\\|\\s*");
 
-                docUtil.addRowsInSummaryTable(columnName, expectedValues);
-                
-                //когда всё приняли - зкарываем соединение
-                //messageQueue.getSession().close();
-                //messageQueue.getConnection().close();
-            } else if (command.equals("UPD")) {
-                logger.info("UPDATE msg receive");
-            }
+            ArrayList<String> expectedValues = new ArrayList<String>();
+            expectedValues.addAll(Arrays.asList(valuesArray));
+
+            docUtil.addRowsInSummaryTable(columnName, expectedValues);
+
+            //messageQueue.getSession().close();
+            //messageQueue.getConnection().close();
             
         } catch (JMSException ex) {
             logger.error(ex);

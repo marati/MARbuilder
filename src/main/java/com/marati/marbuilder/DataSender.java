@@ -97,6 +97,20 @@ public class DataSender {
         }
     }
     
+    private static String joinList(ArrayList<String> sourceList, String glue) {
+        int listSize = sourceList.size();
+        if (listSize == 0)
+          return null;
+
+        StringBuilder out = new StringBuilder();
+        out.append(sourceList.get(0));
+        
+        for (int i=1; i < listSize; ++i)
+          out.append(glue).append(sourceList.get(i));
+          
+        return out.toString();
+    }
+    
     public static void sendXmlDataMessage(String command, Destination destinationTopic, 
             String schemeName, String fileName, String columns) {
         if (mqManager.Connected()) {
@@ -116,16 +130,16 @@ public class DataSender {
                     TextMessage sendMessage = mqManager.getSession().createTextMessage();
 
                     String columnName = entryData.getKey();
-                    String columnValues = entryData.getValue().toString();
+                    String columnValues = joinList(entryData.getValue(), "|");
 
+                    sendMessage.setText(columnValues);
                     sendMessage.setStringProperty("scheme", schemeName);
                     sendMessage.setStringProperty("column", columnName);
                     sendMessage.setStringProperty("ip", mqManager.getIp());
-                    sendMessage.setStringProperty("values", columnValues);
-
-                    sendMessage.setText(command);
+                    sendMessage.setStringProperty("command", command);
 
                     logger.info("preparation to send data [tableColumn: " + columnName + "]");
+                    logger.info("values " + columnValues);
 
                     producer.send(sendMessage);
                 }

@@ -22,6 +22,7 @@ import org.apache.log4j.Logger;
 //my
 import gen.ParseException;
 import gen.DocUtil;
+import javax.swing.table.TableColumn;
 
 /**
  *
@@ -98,7 +99,6 @@ public class MarForm extends JFrame
         addRowItem.addActionListener(this);
         
         summaryTable = new SummaryTable();
-        //summaryTable.setPre
         summaryTable.setAutoResizeMode(400);
         summaryTable.addContextMenu(deleteColumnItem);
         summaryTable.addContextMenu(addRowItem);
@@ -229,36 +229,30 @@ public class MarForm extends JFrame
             structureTables.add(tabbedPane, tableName);
             
             logger.info(String.format("add new tab (%s) and columns (%s)", tableName, columns.toString()));
-            //не работает
-            /*structureTables.repaint();
-            structureTables.validate();
-            
-            
-            summaryTablePane.repaint();
-            summaryTablePane.revalidate();
-            
-            summaryTable.repaint();
-            summaryTable.revalidate();
-            
-            mainPanel.repaint();
-            mainPanel.revalidate();*/
         }
     }
     
     public void addRowsInSummaryTable(String column, ArrayList<String> values) {
-        MARDefaultTableModel marModel =  (MARDefaultTableModel)summaryTable.getModel();
+        MARDefaultTableModel marModel = (MARDefaultTableModel)summaryTable.getModel();
         
         int rowIndex = 0;
         int columnIndex = marModel.getIndexByColumnName(column);
-        
+
         Iterator<String> valuesIt = values.iterator();
         while (valuesIt.hasNext()) {
             marModel.setValueAt(valuesIt.next(), rowIndex, columnIndex);
             ++rowIndex;
 
             int rowCount = marModel.getRowCount();
-            if (rowIndex >= rowCount && valuesIt.hasNext())
+            if (rowIndex == rowCount && valuesIt.hasNext())
                 marModel.addRow(new Object[]{"", ""});
+        }
+        
+        int valuesSize = values.size();
+        if (valuesSize < marModel.getRowCount()) {
+            //с id valuesSize нужно всё очистить и дальше
+            for (int currentIndex = valuesSize; currentIndex < marModel.getRowCount(); ++currentIndex)
+                marModel.setValueAt("", currentIndex, columnIndex);
         }
     }
     
