@@ -14,6 +14,7 @@ import java.net.*;
 import nu.xom.ParsingException;
 
 import gen.DocUtil;
+import java.util.logging.Level;
 
 
 /**
@@ -106,13 +107,18 @@ public class MARmq {
         return session;
     }
 
-    public static Destination getDestinationTopic(String topicName) {
+    public Destination getDestinationTopic(String topicName) {
+        Destination currentDestination = null;
+        
         try {
-            return session.createTopic(topicName);
+            if (Connected()) {
+                currentDestination = session.createTopic(topicName);
+            }
         } catch (JMSException ex) {
             logger.error(ex);
-            return null;
         }
+        
+        return currentDestination;
     }
     
     /*public static Destination getDestinationQueue(String queueName) {
@@ -156,6 +162,12 @@ public class MARmq {
                     logger.error(ex);
                 }
             }
+            
+//            try {
+//                session.close();
+//            } catch (JMSException ex) {
+//                logger.error(ex);
+//            }
         } else {
             logger.info("Соединение закрыто");
         }
@@ -310,9 +322,9 @@ public class MARmq {
     
     public void updatedData(String fileName) {
         logger.info("update file : " + fileName);
-        
-        if (buildReport != null)
-            buildReport.updateReport(fileName);
+        int dotPos = fileName.lastIndexOf(".");
+        String fileNameWithoutExt = fileName.substring(0, dotPos);
+        //dataSender.sendUpdateData(fileNameWithoutExt+".xsd");
     }
 
 }

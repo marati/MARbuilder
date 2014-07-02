@@ -5,21 +5,10 @@ import java.nio.charset.Charset;
 
 import java.util.*;
 import org.apache.log4j.Logger;
-/*import org.apache.commons.vfs2.FileChangeEvent;
-import org.apache.commons.vfs2.FileListener;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.VFS;
-import org.apache.commons.vfs2.impl.DefaultFileMonitor;
-import org.apache.commons.vfs2.FileSystemException;*/
 
 import java.nio.file.*;
 import static java.nio.file.StandardWatchEventKinds.*;
-import static java.nio.file.LinkOption.*;
-import java.nio.file.attribute.*;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import nu.xom.ParsingException;
 
 import gen.ParseException;
@@ -36,11 +25,9 @@ public class FoldersWatcher {
     private final XsdGen xsdGen;
     private final DocUtil tablesGen;
     private static MARmq messageQueue;
-    private DataSender dataSender;
+    private final DataSender dataSender;
     
     private static final Logger logger = Logger.getLogger(FoldersWatcher.class);
-    
-    //private static DefaultFileMonitor fm = null;
     
     public FoldersWatcher(DocUtil tablesGenner) {
         xsdGen = new XsdGen();
@@ -102,7 +89,6 @@ public class FoldersWatcher {
                     
                     dataSender.sendXsdFile(xsdFile.getAbsolutePath(), rootElementName);
                 }
-                
             }
             
             //refact: создать перем. currentXsdDir (для xml и xsd)
@@ -127,46 +113,53 @@ public class FoldersWatcher {
     }
     
     public void setWatching(/*String[] dirsName*/) {
-        
-        Executor runner = Executors.newFixedThreadPool(1);
-        runner.execute(new Runnable() {
+        Thread watchingThread = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    WatchService watcher = FileSystems.getDefault().newWatchService();
 
-        @Override
-        public void run() {
-            try {
-                WatchService watcher = FileSystems.getDefault().newWatchService();
-                
-                Path dir = Paths.get(workingPath + File.separator + "xml");
-                WatchKey key = dir.register(watcher, ENTRY_MODIFY);
-                
-                for (;;) {
-                    key = watcher.take();
-                    
-                    for (WatchEvent<?> event: key.pollEvents()) {
-                        WatchEvent.Kind<?> kind = event.kind();
+                    Path dir = Paths.get(workingPath + File.separator + "xml");
+                    WatchKey key = dir.register(watcher, ENTRY_MODIFY);
+
+                    for (;;) {
+                        key = watcher.take();
+
+                        for (WatchEvent<?> event: key.pollEvents()) {
+                            WatchEvent.Kind<?> kind = event.kind();
+                            if (kind == OVERFLOW) {
+                                logger.info("OVERFLOW!");
+                                continue;
+                            }
+
+                            WatchEvent<Path> ev = (WatchEvent<Path>)event;
+                            Path fileName = ev.context();
+
+                            logger.info("file Update : " + fileName.toString() +
+                                    "kind: " + kind.toString());
+
+                            mainThreadUpdFunc(fileName.toString());
+                        }
                         
-                        WatchEvent<Path> ev = (WatchEvent<Path>)event;
-                        Path fileName = ev.context();
+                        boolean valid = key.reset();
+                        if (!valid) {
+                            break;
+                        }
                         
-                        logger.info("file Update : " + fileName.toString());
-                        
-                        mainThreadUpdFunc(fileName.toString());
+                        Thread.sleep(1000);
                     }
-                    boolean valid = key.reset();
-                    if (!valid) {
-                        break;
-                    }
-                }
-                        
-                } catch (FileSystemException ex) {
-                    logger.error(ex);
-                } catch (IOException ex) {
-                    logger.error(ex);
-                } catch (InterruptedException ex) {
-                    logger.error(ex);
+
+                    } catch (FileSystemException ex) {
+                        logger.error(ex);
+                    } catch (IOException ex) {
+                        logger.error(ex);
+                    } catch (InterruptedException ex) {
+                        logger.error(ex);
                 }
             }
-        });
+        };
+        
+        watchingThread.start();
     }
     
     public void checkWorkingDir(String workingDir) throws ParseException, IOException, ParsingException {
@@ -206,35 +199,4 @@ public class FoldersWatcher {
     public void buildReport(String reportName, Map<String, ArrayList<String>> choosedColumns) {
         messageQueue.buildReport(reportName, choosedColumns);
     }
-    
-    /*static class DirsListener implements FileListener {  
-        private static int counter = 0;
-        
-        public void fileCreated(FileChangeEvent fileChangeEvent)
-                        throws Exception {
-                    System.out.println("file created : "
-                            + fileChangeEvent.getFile().getName());
-        }
-
-        public void fileDeleted(FileChangeEvent fileChangeEvent)
-                throws Exception {
-            System.out.println("file deleted : "
-                    + fileChangeEvent.getFile().getName());
-        }
-
-        public void fileChanged(FileChangeEvent fileChangeEvent)
-                throws Exception {
-            String fileName = fileChangeEvent.getFile().getName().getBaseName();
-            System.out.println(String.format(
-                    "File [%s] changed event from [%s], counter[%s]", fileChangeEvent
-                            .getFile().getName(), this, ++counter));
-            
-            synchronized (this) { //notify waiting thread
-                this.notifyAll();
-                this.wait(7000);
-                messageQueue.updatedData(fileName);
-            }
-            
-        }
-    }*/
 }

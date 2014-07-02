@@ -12,7 +12,7 @@ import org.apache.log4j.Logger;
  */
 public class BuildReport {
     
-    private static MARmq mqManager;
+    private MARmq mqManager;
     private final static Logger logger = Logger.getLogger(BuildReport.class);
     private final static String serviceTopic = "ServiceTopic";
     
@@ -58,11 +58,12 @@ public class BuildReport {
                         getMessage.setStringProperty("columns", columns.toString());
 
                         System.out.print("[schema name: "+entryChoosed.getKey()+"] =>");
-                        //System.out.println(entryChoosed.getValue().toString());
                         reportListener.setExpectedColumns(columns);
                         
                         producer.send(getMessage);
                     }
+                    
+                    //mqManager.getSession().close();
                     
                 }
             } catch (JMSException ex) {
@@ -72,50 +73,4 @@ public class BuildReport {
         }
     }
     
-    public void updateReport(String fileName) {
-        if (mqManager.Connected()) {
-            try {
-                //берём из scheme_mapping имя файла
-                String schemeName = MARmqDatabase.getAttributeByFileName("scheme_name", fileName);
-                
-                String columns = MARmqDatabase.getAttributeSourceByScheme("columns", schemeName);
-                String topicName = MARmqDatabase.getAttributeSourceByScheme("destination_topic", schemeName);
-                
-                Destination currentTopicDestination = mqManager.getDestinationTopic(topicName);
-                
-                if (currentTopicDestination != null) {
-                    MessageProducer producer = mqManager.getSession().createProducer(currentTopicDestination);
-                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-                    
-                    String messageText = "UPD";
-                    
-                    //получаем данные
-                    Map<String, ArrayList<String>> dataFromXml =
-                            mqManager.createXmlData(fileName, columns);
-                    
-                    for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
-                        TextMessage sendMessage = mqManager.getSession().createTextMessage();
-                        
-                        String columnName = entryData.getKey();
-                        String columnValues = entryData.getValue().toString();
-                        //sendMessage.setString(columnName, columnValues);
-                        
-                        sendMessage.setStringProperty("scheme", schemeName);
-                        sendMessage.setStringProperty("column", columnName);
-                        sendMessage.setStringProperty("ip", mqManager.getIp());
-                        sendMessage.setStringProperty("values", columnValues);
-                        
-                        sendMessage.setText(messageText);
-                        
-                        logger.info("preparation to update data [tableColumn: " + columnName + "]");
-                        
-                        producer.send(sendMessage);
-                    }
-                }
-                
-            } catch (JMSException ex) {
-                logger.error(ex);
-            }
-        }
-    }
 }

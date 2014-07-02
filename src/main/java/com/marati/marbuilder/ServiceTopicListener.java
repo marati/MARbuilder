@@ -1,9 +1,8 @@
 package com.marati.marbuilder;
 
-import java.io.*;
 import java.util.*;
 import javax.jms.*;
-import nu.xom.ParsingException;
+
 import org.apache.log4j.Logger;
 /**
  *
@@ -70,9 +69,12 @@ public class ServiceTopicListener implements MessageListener {
                 Destination reportDestination = msg.getJMSReplyTo();
                 logger.info("destination sender: " + msg.getJMSReplyTo().toString());
                 
+                String fullDestinationTopic = reportDestination.toString();
+                String destinationTopic = fullDestinationTopic.replace("topic://", "");
+                
                 //запоминаем кому и куда посылаем сообщение
                 MARmqDatabase.saveSourceMapping(
-                        schemeName, reportDestination.toString(), columnsStr.toString());
+                        schemeName, columnsStr.toString(), destinationTopic);
                 
                 if (messageQueue.Connected()) {
                 
@@ -98,6 +100,7 @@ public class ServiceTopicListener implements MessageListener {
                             sendMessage.setText(messageText);
 
                             logger.info("preparation to send data [tableColumn: " + columnName + "]");
+                            logger.info("save dest: " + destinationTopic);
 
                             producer.send(sendMessage);
                         }
