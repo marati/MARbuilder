@@ -16,7 +16,7 @@ import java.util.Map;
  * @author Марат
  */
 public class DataSender {
-    private MARmq mqManager;
+    private static MARmq mqManager;
     private static String xsdTopicName;
     private static Logger logger = Logger.getLogger(DataSender.class);
     
@@ -97,52 +97,57 @@ public class DataSender {
         }
     }
     
-    public void sendUpdateData(String fileName) {
+    public static void sendXmlDataMessage(String command, Destination destinationTopic, 
+            String schemeName, String fileName, String columns) {
         if (mqManager.Connected()) {
+            if (destinationTopic == null)
+                return;
+            
+            MessageProducer producer;
             try {
-                //берём из scheme_mapping имя файла
-                String schemeName = MARmqDatabase.getAttributeByFileName("scheme_name", fileName);
+                producer = mqManager.getSession().createProducer(destinationTopic);
+                producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                 
-                //берём из source_mapping колонки и топик отчёта
-                String columns = MARmqDatabase.getAttributeSourceByScheme("columns", schemeName);
-                String topicName = MARmqDatabase.getAttributeSourceByScheme("destination_topic", schemeName);
-                
-                Destination currentTopicDestination = mqManager.getDestinationTopic(topicName);
-                
-                if (currentTopicDestination != null) {
-                    MessageProducer producer = mqManager.getSession().createProducer(currentTopicDestination);
-                    producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-                    
-                    String messageText = "UPD";
-                    
-                    //получаем данные
-                    Map<String, ArrayList<String>> dataFromXml =
-                            mqManager.createXmlData(fileName, columns);
-                    
-                    for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
-                        TextMessage sendMessage = mqManager.getSession().createTextMessage();
-                        
-                        String columnName = entryData.getKey();
-                        String columnValues = entryData.getValue().toString();
-                        //sendMessage.setString(columnName, columnValues);
-                        
-                        sendMessage.setStringProperty("scheme", schemeName);
-                        sendMessage.setStringProperty("column", columnName);
-                        sendMessage.setStringProperty("ip", mqManager.getIp());
-                        sendMessage.setStringProperty("values", columnValues);
-                        
-                        sendMessage.setText(messageText);
-                        
-                        logger.info("preparation to update data [tableColumn: " + columnName + "]");
-                        logger.info("topic name: " + topicName);
-                        
-                        producer.send(sendMessage);
-                    }
+                //получаем данные
+                Map<String, ArrayList<String>> dataFromXml =
+                        mqManager.createXmlData(fileName, columns);
+
+                for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
+                    TextMessage sendMessage = mqManager.getSession().createTextMessage();
+
+                    String columnName = entryData.getKey();
+                    String columnValues = entryData.getValue().toString();
+
+                    sendMessage.setStringProperty("scheme", schemeName);
+                    sendMessage.setStringProperty("column", columnName);
+                    sendMessage.setStringProperty("ip", mqManager.getIp());
+                    sendMessage.setStringProperty("values", columnValues);
+
+                    sendMessage.setText(command);
+
+                    logger.info("preparation to send data [tableColumn: " + columnName + "]");
+
+                    producer.send(sendMessage);
                 }
-                
             } catch (JMSException ex) {
                 logger.error(ex);
             }
-        }
+        }    
+    }
+    
+    public void sendUpdateData(String fileName) {
+        String command = "UPD";
+        
+        //берём из scheme_mapping имя файла
+        String schemeName = MARmqDatabase.getAttributeByFileName("scheme_name", fileName);
+
+        //берём из source_mapping колонки и топик отчёта
+        String columns = MARmqDatabase.getAttributeSourceByScheme("columns", schemeName);
+        String topicName = MARmqDatabase.getAttributeSourceByScheme("destination_topic", schemeName);
+        Destination currentTopicDestination = mqManager.getDestinationTopic(topicName);
+                
+        sendXmlDataMessage(command, currentTopicDestination, schemeName, fileName, columns);
+        
+        logger.info("send update message to topic: " + topicName);
     }
 }

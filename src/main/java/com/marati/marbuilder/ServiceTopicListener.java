@@ -9,18 +9,12 @@ import org.apache.log4j.Logger;
  * @author Марат
  */
 public class ServiceTopicListener implements MessageListener {
-    private MARmq messageQueue;
-    private String projectPath;
+    private static MARmq messageQueue;
     private final static String serviceTopic = "ServiceTopic";
     private final static Logger logger = Logger.getLogger(ServiceTopicListener.class);
 
-    public ServiceTopicListener(MARmq mq, String projPath) {
+    public ServiceTopicListener(MARmq mq) {
         messageQueue = mq;
-        projectPath = projPath;
-    }
-    
-    public void sendMessage() {
-        
     }
     
     public void onMessage(Message msg) {
@@ -34,7 +28,7 @@ public class ServiceTopicListener implements MessageListener {
                         "[ID " + messageId + "], " +
                         "[Destination " + msg.getJMSDestination() + "]");
             
-            String myIpAddr = messageQueue.getIp();
+            final String myIpAddr = messageQueue.getIp();
 
             if (myIpAddr == null) {
                 logger.error("IP address not defined");
@@ -52,6 +46,7 @@ public class ServiceTopicListener implements MessageListener {
             String command = textMessage.getText();
             
             if (command.equals("GET")) {
+                String responseCommand = "SEND";
                 
                 String schemeName = msg.getStringProperty("scheme");
                 String rawColumnsStr = msg.getStringProperty("columns");
@@ -63,9 +58,6 @@ public class ServiceTopicListener implements MessageListener {
                 
                 String fileName = messageQueue.getAttributeFromDatabase("file_name", schemeName);
                 
-                Map<String, ArrayList<String>> dataFromXml =
-                        messageQueue.createXmlData(fileName, columnsStr);
-                
                 Destination reportDestination = msg.getJMSReplyTo();
                 logger.info("destination sender: " + msg.getJMSReplyTo().toString());
                 
@@ -76,40 +68,10 @@ public class ServiceTopicListener implements MessageListener {
                 MARmqDatabase.saveSourceMapping(
                         schemeName, columnsStr.toString(), destinationTopic);
                 
-                if (messageQueue.Connected()) {
+                DataSender.sendXmlDataMessage(responseCommand, reportDestination,
+                        schemeName, fileName, columnsStr);
                 
-                    if (reportDestination != null) {
-                        MessageProducer producer = messageQueue.getSession().createProducer(reportDestination);
-                        producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-
-                        String messageText = "SEND";
-
-                        for (Map.Entry<String, ArrayList<String>> entryData: dataFromXml.entrySet()) {
-                            TextMessage sendMessage = messageQueue.getSession().createTextMessage();
-                            sendMessage.setJMSCorrelationID(messageId);
-
-                            String columnName = entryData.getKey();
-                            String columnValues = entryData.getValue().toString();
-                            //sendMessage.setString(columnName, columnValues);
-
-                            sendMessage.setStringProperty("scheme", schemeName);
-                            sendMessage.setStringProperty("column", columnName);
-                            sendMessage.setStringProperty("ip", myIpAddr);
-                            sendMessage.setStringProperty("values", columnValues);
-
-                            sendMessage.setText(messageText);
-
-                            logger.info("preparation to send data [tableColumn: " + columnName + "]");
-                            logger.info("save dest: " + destinationTopic);
-
-                            producer.send(sendMessage);
-                        }
-                        
-                        //после отправки ответа клиентам - закрываем соединение
-                        messageQueue.getSession().close();
-                        
-                    }
-                }
+                logger.info("send data message to topic: " + fullDestinationTopic);
             }
             
         } catch (JMSException ex) {

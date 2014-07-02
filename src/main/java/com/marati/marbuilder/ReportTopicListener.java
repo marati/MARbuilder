@@ -12,22 +12,17 @@ import gen.DocUtil;
  * @author Марат
  */
 public class ReportTopicListener implements MessageListener {
-    private MARmq messageQueue;
-    private String projectPath;
+    private static MARmq messageQueue;
     private ArrayList<String> expectedColumns = new ArrayList<String>();
     //private TreeMap<String, ArrayList<String>> expectedColumnsWithValues =
             //new TreeMap<String, ArrayList<String>>();
     private Boolean arrivalSign = false;
-    private String addingRow = null;
-    private DocUtil docUtil;
-    //private final static String topicName = null;
+    private final DocUtil docUtil;
     private final static Logger logger = Logger.getLogger(ReportTopicListener.class);
 
-    public ReportTopicListener(MARmq mq, String projPath) {
+    public ReportTopicListener(MARmq mq) {
         messageQueue = mq;
         docUtil = messageQueue.getDocUtil();
-        
-        projectPath = projPath;
     }
     
     public void setExpectedColumns(ArrayList<String> columns) {

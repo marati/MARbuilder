@@ -132,8 +132,6 @@ public class MARmq {
     
     public void activateReceiver() {
         if (Connected()) {
-            
-            //создание Listener'a у mainTopic'а
             mainDestination = getDestinationTopic(xsdTopic);
             
             if (mainDestination != null) {
@@ -148,7 +146,6 @@ public class MARmq {
                 }
             }
             
-            //создание Listener'a у serviceTopic'а
             Destination serviceDestination = getDestinationTopic(serviceTopic);
             if (serviceDestination != null) {
                 try {
@@ -156,18 +153,12 @@ public class MARmq {
                     MessageConsumer consumer = session.createDurableSubscriber(
                             topic,
                             "serviceSubFromPath("+projectPath+")");
-                    serviceListener = new ServiceTopicListener(this, projectPath);
+                    serviceListener = new ServiceTopicListener(this);
                     consumer.setMessageListener(serviceListener);
                 } catch (JMSException ex) {
                     logger.error(ex);
                 }
             }
-            
-//            try {
-//                session.close();
-//            } catch (JMSException ex) {
-//                logger.error(ex);
-//            }
         } else {
             logger.info("Соединение закрыто");
         }
@@ -175,7 +166,7 @@ public class MARmq {
     
     public ReportTopicListener subscribeToTopic(String topicName
             /*TreeMap<String, ArrayList<String>> expectedColumns*/) {
-        ReportTopicListener reportListener = new ReportTopicListener(this, projectPath);
+        ReportTopicListener reportListener = new ReportTopicListener(this);
         
         if (Connected()) {
             
@@ -322,9 +313,11 @@ public class MARmq {
     
     public void updatedData(String fileName) {
         logger.info("update file : " + fileName);
+        
         int dotPos = fileName.lastIndexOf(".");
         String fileNameWithoutExt = fileName.substring(0, dotPos);
-        //dataSender.sendUpdateData(fileNameWithoutExt+".xsd");
+        
+        dataSender.sendUpdateData(fileNameWithoutExt+".xsd");
     }
 
 }
